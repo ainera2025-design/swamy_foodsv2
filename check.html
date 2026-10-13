@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+
+<html lang="en-AU">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Connection check | Swamy Foods</title>
+
+<meta name="description" content="Checks that the Swamy Foods shop is connected to its database. For the shop owner.">
+
+<meta name="robots" content="noindex, nofollow">
+
+<meta name="theme-color" content="#A13E2D">
+
+<link rel="icon" href="favicon.ico" sizes="48x48">
+
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+<link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
+
+<style>
+
+  :root{--cream:#FBF7F0;--white:#fff;--turmeric:#C98A1C;--brick:#A13E2D;--leaf:#4C6B4F;--text:#2E2A26;--muted:#7A7168;--border:#E7DFD2;
+
+        --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;--serif:Georgia,"Times New Roman",serif}
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  body{font-family:var(--sans);background:var(--cream);color:var(--text);line-height:1.6;padding:28px 16px 60px}
+
+  main{max-width:780px;margin:0 auto}
+
+  h1{font-family:var(--serif);font-weight:600;font-size:30px;color:var(--brick);margin-bottom:6px}
+
+  .lead{color:var(--muted);margin-bottom:20px;font-size:15px}
+
+  .summary{border-radius:10px;padding:16px 18px;margin-bottom:20px;font-size:16px;border:1px solid var(--border);background:var(--white)}
+
+  .summary.ok{background:#E4EEE2;border-color:#C5DCC1;color:#2f4a31}
+
+  .summary.bad{background:#F5DEDA;border-color:#E8BDB6;color:#7d2a1c}
+
+  .summary.warn{background:#FBEFD9;border-color:#F0DDB0;color:#6b4d17}
+
+  ol{list-style:none}
+
+  li.check{background:var(--white);border:1px solid var(--border);border-left:6px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:12px}
+
+  li.check.ok{border-left-color:var(--leaf)} li.check.bad{border-left-color:#B8402E} li.check.warn{border-left-color:var(--turmeric)} li.check.wait{border-left-color:var(--border);opacity:.6}
+
+  .head{display:flex;gap:10px;align-items:flex-start;font-weight:700}
+
+  .tag{flex:0 0 auto;font-size:12px;font-weight:700;border-radius:12px;padding:2px 10px;margin-top:2px}
+
+  .ok .tag{background:#E4EEE2;color:var(--leaf)} .bad .tag{background:#F5DEDA;color:#9b2c1c} .warn .tag{background:#FBEFD9;color:#8A5E12} .wait .tag{background:#EEE9E1;color:var(--muted)}
+
+  .detail{margin-top:6px;font-size:14.5px;color:#4a4540}
+
+  .fix{margin-top:8px;font-size:14.5px;background:var(--cream);border:1px solid var(--border);border-radius:6px;padding:10px 12px}
+
+  .fix b{color:var(--brick)}
+
+  code{background:#F1EBDF;border-radius:4px;padding:1px 6px;font-size:13px;word-break:break-all}
+
+  button{cursor:pointer;background:var(--brick);color:#fff;border:0;border-radius:6px;padding:11px 20px;font:600 14.5px var(--sans);margin-right:8px}
+
+  button.alt{background:var(--white);color:var(--brick);border:1.5px solid var(--brick)}
+
+  .actions{margin:18px 0}
+
+  .small{font-size:13px;color:var(--muted);margin-top:22px}
+
+</style>
+
+</head>
+
+<body data-page="check">
+
+<main>
+
+  <h1>Shop connection check</h1>
+
+  <p class="lead">This page checks that your shop is set up correctly. It only reads. It never changes your products or orders. Read the first red item and fix that one first.</p>
+
+  <div id="summary" class="summary" role="status">Checking…</div>
+
+  <ol id="list"></ol>
+
+  <div class="actions">
+
+    <button type="button" id="again">Check again</button>
+
+    <button type="button" id="copy" class="alt">Copy results to send to me</button>
+
+  </div>
+
+  <p class="small">Tip: after changing a file, reload with Ctrl+F5 (Cmd+Shift+R on a Mac) so your browser doesn't show the old copy. You can delete this page once the shop works. Your key is never shown in full here.</p>
+
+</main>
+
+<script>
+
+(function () {
+
+  "use strict";
+
+  var list = document.getElementById("list"), summary = document.getElementById("summary");
+
+  var report = [];
+
+
+ 
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+
+  var LABEL = { ok: "OK", bad: "FIX THIS", warn: "CHECK", wait: "…" };
+
+  function row(title) {
+
+    var li = el("li", "check wait"), head = el("div", "head"), tag = el("span", "tag", LABEL.wait);
+
+    head.appendChild(tag); head.appendChild(el("span", "", title)); li.appendChild(head); list.appendChild(li);
+
+    return {
+
+      set: function (status, detail, fix) {
+
+        li.className = "check " + status; tag.textContent = LABEL[status];
+
+        if (detail) li.appendChild(el("div", "detail", detail));
+
+        if (fix) { var f = el("div", "fix"); f.appendChild(el("b", "", "What to do: ")); f.appendChild(document.createTextNode(fix)); li.appendChild(f); }
+
+        report.push("[" + LABEL[status] + "] " + title + (detail ? " - " + detail : "") + (fix ? " | Do: " + fix : ""));
+
+        return status;
+
+      }
+
+    };
+
+  }
+
+  function loadScript(src) {
+
+    return new Promise(function (resolve) {
+
+      var s = document.createElement("script");
+
+      s.src = src + "?check=" + Date.now(); s.onload = function () { resolve(true); }; s.onerror = function () { resolve(false); };
+
+      document.head.appendChild(s);
+
+    });
+
+  }
+
+  function loadCss(href) {
+
+    return new Promise(function (resolve) {
+
+      var l = document.createElement("link");
+
+      l.rel = "stylesheet"; l.href = href + "?check=" + Date.now(); l.onload = function () { resolve(true); }; l.onerror = function () { resolve(false); };
+
+      document.head.appendChild(l);
+
+    });
+
+  }
+
+  function b64json(part) {
+
+    try { return JSON.parse(decodeURIComponent(escape(atob(part.replace(/-/g, "+").replace(/_/g, "/"))))); } catch (e) { return null; }
+
+  }
+
+  function call(base, key, path, method, body) {
+
+    var headers = { apikey: key, "Content-Type": "application/json" };
+
+    if (/^eyJ/.test(key)) headers.Authorization = "Bearer " + key;
+
+    var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 12000);
+
+    return fetch(base + path, { method: method || "POST", headers: headers, body: body === undefined ? undefined : JSON.stringify(body), signal: ctl.signal })
+
+      .then(function (r) { return r.text().then(function (txt) { var j = null; try { j = JSON.parse(txt); } catch (e) {} return { status: r.status, json: j, text: txt }; }); })
+
+      .catch(function (e) { return { network: true, aborted: e && e.name === "AbortError" }; })
+
+      .then(function (x) { clearTimeout(t); return x; });
+
+  }
+
+  var msgOf = function (r) { return (r.json && (r.json.message || r.json.msg || r.json.error_description)) || (r.text || "").slice(0, 120); };
+
+
+ 
+
+  async function run() {
+
+    list.textContent = ""; report = []; summary.className = "summary"; summary.textContent = "Checking…";
+
+    var results = [];
+
+
+ 
+
+    // 1. files ------------------------------------------------------------
+
+    var r1 = row("1. The shop's files are in the right place");
+
+    var okCfg = await loadScript("config.js"), okSb = await loadScript("app.js"), okSite = await loadCss("styles.css");
+
+    var missing = [];
+
+    if (!okCfg) missing.push("config.js"); if (!okSb) missing.push("app.js");
+
+    if (missing.length) {
+
+      results.push(r1.set("bad", "These files were not found next to this page: " + missing.join(", ") + ". Without app.js the products can't load, and the shop area stays empty.",
+
+        "Upload " + missing.join(" and ") + " into the SAME folder as index.html and check.html (not inside another folder), keeping the exact file names. Then reload with Ctrl+F5."));
+
+    } else if (!okSite) {
+
+      results.push(r1.set("bad", "config.js and app.js are there, but styles.css was not found. The pages will work but look plain and broken.", "Upload styles.css into the same folder as index.html, with exactly that name."));
+
+    } else {
+
+      results.push(r1.set("ok", "config.js, app.js and styles.css were all found."));
+
+    }
+
+
+ 
+
+    // 2. config values ----------------------------------------------------
+
+    var r2 = row("2. config.js has your Supabase details");
+
+    var cfg = window.SWAMY_CONFIG, base = "", key = "", cfgOk = false;
+
+    if (!cfg) {
+
+      results.push(r2.set("bad", okCfg ? "config.js loaded but didn't define the settings. A quote, comma or bracket may have been deleted when you pasted your details." : "config.js is missing, so there is nothing to check.",
+
+        "Re-download the original config.js and paste only the two values between the quotes."));
+
+    } else {
+
+      base = String(cfg.SUPABASE_URL || ""); key = String(cfg.SUPABASE_ANON_KEY || "");
+
+      var problems = [], warns = [];
+
+      if (/YOUR[-_]/i.test(base + key) || !base || !key) problems.push("It still contains the placeholder text (YOUR-PROJECT-ID / YOUR-ANON-PUBLIC-KEY). Paste your real Project URL and anon key.");
+
+      if (/\s/.test(base) || /\s/.test(key) || /["'`]/.test(base + key)) problems.push("There is a stray space, quote or line break inside the URL or key. Paste again without extra characters.");
+
+      if (base && !/^https?:\/\//.test(base)) problems.push("The URL must start with https:// (it should look like https://abcdefgh.supabase.co).");
+
+      else if (base && /^http:\/\//.test(base) && !/localhost|127\.0\.0\.1/.test(base)) warns.push("The URL uses http. Supabase addresses should start with https.");
+
+      if (base && !/\.supabase\.co\/?$/.test(base) && !/YOUR[-_]/i.test(base) && /^https?:\/\//.test(base) && !/localhost|127\.0\.0\.1/.test(base)) warns.push("The URL doesn't end in .supabase.co. That's fine only if you set up a custom domain. Otherwise use the Project URL from Settings, then API (not the dashboard link).");
+
+      if (/\/(rest|auth)\/v1|\/project\//.test(base)) problems.push("The URL has extra path on the end. Use only the part up to .supabase.co.");
+
+      var keyNote = "";
+
+      if (key && !/YOUR[-_]/i.test(key)) {
+
+        if (/^eyJ/.test(key)) {
+
+          var parts = key.split("."), payload = parts.length === 3 ? b64json(parts[1]) : null;
+
+          if (!payload) problems.push("The key looks cut off or garbled. It should be one long line of letters and numbers. Copy it again.");
+
+          else {
+
+            if (payload.role === "service_role") problems.push("DANGER: this is your secret service_role key, not the public anon key. Anyone who opens your website could copy it and read or change ALL your data. Replace it with the anon / public key now, and in Supabase (Settings, then API keys) reset the secret key because it has been exposed.");
+
+            else if (payload.role !== "anon") warns.push("The key's role is '" + payload.role + "'. The public website should use the 'anon' key.");
+
+            var m = base.match(/^https?:\/\/([a-z0-9]+)\./);
+
+            if (payload.ref && m && payload.ref !== m[1]) problems.push("This key belongs to a different Supabase project (" + payload.ref + ") than the URL (" + m[1] + "). Copy both from the same project.");
+
+          }
+
+        } else if (/^sb_secret_/.test(key)) problems.push("DANGER: this is a secret key (sb_secret_...). Use the publishable key (sb_publishable_...) on the website, and reset the secret key in Supabase because it has been exposed.");
+
+        else if (!/^sb_publishable_/.test(key)) warns.push("The key doesn't look like a Supabase anon or publishable key. Copy it again from Settings, then API.");
+
+        keyNote = "Key starts with " + key.slice(0, 14) + "… (hidden).";
+
+      }
+
+      if (problems.length) results.push(r2.set("bad", problems.join(" "), "Open config.js, fix the line(s) above, upload it again, then reload with Ctrl+F5."));
+
+      else if (warns.length) { cfgOk = true; results.push(r2.set("warn", warns.join(" ") + " " + keyNote, "If everything below is green you can ignore this.")); }
+
+      else { cfgOk = true; results.push(r2.set("ok", "URL " + base + ". " + keyNote)); }
+
+    }
+
+
+ 
+
+    // 3. database reachable + products -----------------------------------
+
+    var r3 = row("3. The shop can reach your database and read the products");
+
+    var reachable = false;
+
+    if (!cfgOk) {
+
+      results.push(r3.set("wait", "Skipped until step 2 is fixed."));
+
+      document.querySelector("#list li:last-child").className = "check wait";
+
+    } else {
+
+      var c = await call(base, key, "/rest/v1/rpc/get_catalog", "POST", {});
+
+      if (c.network) {
+
+        results.push(r3.set("bad", c.aborted ? "Supabase didn't answer within 12 seconds." : "The browser couldn't connect to " + base + ".",
+
+          "Check, in this order: (1) the URL has no typo; (2) the project isn't paused (free projects pause after about a week idle: open the Supabase dashboard and press Restore project); (3) you're online and no ad-blocker or firewall is blocking supabase.co."));
+
+      } else if (c.status === 401 || c.status === 403) {
+
+        results.push(r3.set("bad", "Supabase refused the request: " + msgOf(c),
+
+          /api key|jwt/i.test(msgOf(c)) ? "The key is wrong or expired. Copy the anon / public key again from Settings, then API." : "The permissions step in schema.sql didn't run. Re-run the whole schema.sql file in the SQL Editor and read any red error at the bottom."));
+
+      } else if (c.status === 404) {
+
+        results.push(r3.set("bad", "The database doesn't have the get_catalog function (" + msgOf(c) + ").",
+
+          "schema.sql didn't finish. In Supabase open SQL Editor, paste the whole supabase/schema.sql and press Run. If a red error appears at the bottom, that line is the problem: send it to me. Then run: notify pgrst, 'reload schema';"));
+
+      } else if (c.status >= 500) {
+
+        results.push(r3.set("bad", "Supabase reported an error (" + c.status + "): " + msgOf(c), "Wait a minute and check again. If it continues, check the project's status in the Supabase dashboard."));
+
+      } else if (c.status === 200 && Array.isArray(c.json)) {
+
+        reachable = true;
+
+        if (c.json.length === 0) results.push(r3.set("bad", "The database answers, but it returned 0 products.", "Either the starting products weren't added (re-run schema.sql: it adds them when the products table is empty), or every product is switched off (in admin, Products & stock, tick 'Show in shop')."));
+
+        else results.push(r3.set("ok", "Connected. The database returned " + c.json.length + " products, so the shop page will show them."));
+
+      } else {
+
+        results.push(r3.set("bad", "Unexpected reply (" + c.status + "): " + msgOf(c), "Re-run schema.sql and check again."));
+
+      }
+
+    }
+
+
+ 
+
+    // 4. the other functions exist --------------------------------------
+
+    var r4 = row("4. Ordering, tracking and admin functions are installed");
+
+    if (!reachable) { results.push(r4.set("wait", "Skipped until step 3 is fixed.")); document.querySelector("#list li:last-child").className = "check wait"; }
+
+    else {
+
+      var probes = [
+
+        ["is_admin", {}, function (r) { return r.status === 200; }],
+
+        ["track_order", { p_ref: "SF-ZZZZZZ", p_email: "check@example.com" }, function (r) { return r.status === 400 && /could not find/i.test(msgOf(r)); }],
+
+        ["place_order", { p_customer: {}, p_items: [] }, function (r) { return r.status === 400 && /full name/i.test(msgOf(r)); }]
+
+      ];
+
+      var bad = [];
+
+      for (var i = 0; i < probes.length; i++) {
+
+        var r = await call(base, key, "/rest/v1/rpc/" + probes[i][0], "POST", probes[i][1]);
+
+        if (!probes[i][2](r)) bad.push(probes[i][0] + " (" + (r.network ? "no connection" : r.status + " " + msgOf(r)) + ")");
+
+      }
+
+      var adm = await call(base, key, "/rest/v1/rpc/admin_list_orders", "POST", {});
+
+      var admLocked = adm.status === 401 || adm.status === 403;
+
+      if (bad.length) results.push(r4.set("bad", "These didn't respond correctly: " + bad.join("; ") + ".", "Re-run the whole schema.sql file (it's safe to run again), then run: notify pgrst, 'reload schema';"));
+
+      else if (adm.status === 404) results.push(r4.set("bad", "The admin functions are missing.", "Re-run the whole schema.sql file."));
+
+      else if (!admLocked) results.push(r4.set("bad", "Admin functions answered a visitor who isn't logged in (" + adm.status + ").", "Re-run schema.sql so the permissions section is applied, then check again."));
+
+      else results.push(r4.set("ok", "Customers can order and track; admin functions are installed and refuse anyone who isn't an admin."));
+
+    }
+
+
+ 
+
+    // 5. tables locked ----------------------------------------------------
+
+    var r5 = row("5. Your customers' orders are private");
+
+    if (!reachable) { results.push(r5.set("wait", "Skipped until step 3 is fixed.")); document.querySelector("#list li:last-child").className = "check wait"; }
+
+    else {
+
+      var o = await call(base, key, "/rest/v1/orders?select=ref,customer_email&limit=1", "GET");
+
+      if (o.status === 200 && Array.isArray(o.json) && o.json.length > 0) results.push(r5.set("bad", "DANGER: a visitor who isn't logged in can read order details directly.", "Re-run schema.sql immediately; its lock-down section removes this access."));
+
+      else if (o.status === 200) results.push(r5.set("warn", "Orders can't be read right now, but the table isn't fully locked.", "Re-run schema.sql to lock it completely."));
+
+      else results.push(r5.set("ok", "The orders table refuses direct access from the website (as it should)."));
+
+    }
+
+
+ 
+
+    // 6. which index.html is on the site ---------------------------------
+
+    var r6 = row("6. The shop page is the new version");
+
+    if (location.protocol === "file:") {
+
+      results.push(r6.set("warn", "You opened this file straight from your computer, so I can't look at the live shop page.", "Upload the folder to your host and open check.html there to run this step."));
+
+    } else {
+
+      try {
+
+        var resp = await fetch("index.html?check=" + Date.now(), { cache: "no-store" });
+
+        var html = await resp.text();
+
+        var hasSb = /src=["']app\.js/.test(html), hasCfg = /src=["']config\.js/.test(html), hasBox = /id=["']productContainer/.test(html);
+
+        if (!resp.ok) results.push(r6.set("warn", "index.html wasn't found next to this page (" + resp.status + ").", "Upload index.html into the same folder."));
+
+        else if (!hasSb || !hasCfg) results.push(r6.set("bad", "The index.html on your site is an OLD copy: it doesn't load app.js and config.js, so it can't show products from the database.", "Upload the new index.html from the swamy-foods folder over the old one, then reload with Ctrl+F5."));
+
+        else if (!hasBox) results.push(r6.set("bad", "index.html is missing the product area.", "Upload the new index.html again."));
+
+        else results.push(r6.set("ok", "index.html is the new version and loads app.js and config.js."));
+
+      } catch (e) { results.push(r6.set("warn", "Couldn't read index.html from here.", "Check it is uploaded next to this page.")); }
+
+    }
+
+
+ 
+
+    // 7. browser storage --------------------------------------------------
+
+    var r7 = row("7. This browser can keep a cart");
+
+    try { localStorage.setItem("swamyfoods.check", "1"); localStorage.removeItem("swamyfoods.check"); results.push(r7.set("ok", "Browser storage works, so carts and logins will be remembered.")); }
+
+    catch (e) { results.push(r7.set("warn", "This browser is blocking storage (private mode or strict settings). The shop still works, but the cart won't survive a reload.", "Try a normal (not private) window.")); }
+
+
+ 
+
+    // summary -------------------------------------------------------------
+
+    var firstBad = results.indexOf("bad");
+
+    if (firstBad >= 0) { summary.className = "summary bad"; summary.textContent = "Something needs fixing. Start with the first red item (check " + (firstBad + 1) + "), then press Check again."; }
+
+    else if (results.indexOf("warn") >= 0) { summary.className = "summary warn"; summary.textContent = "Working, with a note to read below."; }
+
+    else { summary.className = "summary ok"; summary.textContent = "All good. Your shop is connected and the products will show."; }
+
+  }
+
+
+ 
+
+  document.getElementById("again").addEventListener("click", run);
+
+  document.getElementById("copy").addEventListener("click", function () {
+
+    var text = "Swamy Foods connection check (" + new Date().toISOString() + ")\n" + report.join("\n");
+
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(
+
+      function () { alert("Copied. Paste it into your message to me."); },
+
+      function () { window.prompt("Copy this text and send it to me:", text); });
+
+  });
+
+  run();
+
+})();
+
+</script>
+
+</body>
+
+</html>
+
+
+ 

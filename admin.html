@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#A13E2D">
+<title>Swamy Foods | Admin</title>
+<meta name="description" content="Swamy Foods admin: manage orders, invoices, products and stock.">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
+<link rel="manifest" href="site.webmanifest">
+<style>
+ :root{
+   --bg:#F8F4EC; --surface:#FFFFFF; --tint:#F1EADD; --ink:#2A2622; --ink-2:#5F564D;
+   --line:#DDD3C3; --line-strong:#B5A998; --brand:#9E3B2A; --brand-dark:#7F2F20; --accent:#A87412;
+   --ok:#3D6A43; --warn:#8C5E0A; --err:#A32D1E; --info:#1D5A87;
+   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+   --serif:Georgia,"Iowan Old Style","Palatino Linotype","Times New Roman",serif;
+   --r:4px;
+ }
+ *,*::before,*::after{ box-sizing:border-box; }
+ *{ margin:0; }
+ html{ -webkit-text-size-adjust:100%; }
+ body{ font:16px/1.55 var(--sans); background:var(--bg); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased; }
+ a{ color:var(--brand); text-underline-offset:3px; }
+ :focus-visible{ outline:2px solid var(--brand); outline-offset:2px; }
+ [hidden]{ display:none!important; }
+ @media (prefers-reduced-motion:reduce){ *{ transition:none!important; animation:none!important; } }
+
+ .skip-link{ position:absolute; left:12px; top:-60px; background:var(--ink); color:#fff; padding:10px 16px; border-radius:var(--r); z-index:2000; text-decoration:none; }
+ .skip-link:focus{ top:12px; }
+ header{ position:sticky; top:0; z-index:50; background:var(--surface); border-bottom:1px solid var(--line); }
+ .bar{ max-width:1120px; margin:0 auto; padding:0 24px; min-height:64px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+ .logo{ display:flex; align-items:center; gap:10px; font:600 1.25rem/1 var(--serif); color:var(--brand); text-decoration:none; }
+ .logo span{ color:var(--accent); }
+ .logo img{ width:32px; height:32px; object-fit:contain; }
+ .logo small{ font:600 .6875rem/1 var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); border:1px solid var(--line-strong); border-radius:var(--r); padding:4px 8px; margin-left:4px; }
+ .who{ display:flex; align-items:center; gap:16px; font-size:.875rem; color:var(--ink-2); flex-wrap:wrap; }
+ .tabs{ max-width:1120px; margin:0 auto; padding:0 24px; display:flex; gap:28px; overflow-x:auto; }
+ .tabs button{ cursor:pointer; background:none; border:0; border-bottom:2px solid transparent; padding:14px 0 12px; font:500 .9375rem var(--sans); color:var(--ink-2); white-space:nowrap; }
+ .tabs button:hover{ color:var(--ink); }
+ .tabs button[aria-selected="true"]{ color:var(--brand); border-bottom-color:var(--brand); font-weight:600; }
+ .pill{ display:inline-block; background:var(--brand); color:#fff; font-size:.6875rem; font-weight:700; border-radius:9px; padding:1px 7px; margin-left:6px; }
+
+ main{ max-width:1120px; margin:0 auto; padding:36px 24px 96px; }
+ h1{ font:600 clamp(1.6rem,1.2rem + 1.2vw,2.1rem)/1.2 var(--serif); letter-spacing:-.01em; margin-bottom:6px; }
+ h2{ font:600 1.25rem/1.25 var(--serif); }
+ .lead{ color:var(--ink-2); font-size:1rem; margin-bottom:24px; max-width:64ch; }
+ .center-box{ max-width:440px; margin:56px auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:36px; }
+ .center-box h1{ margin-bottom:8px; }
+ .back-link{ cursor:pointer; background:none; border:0; padding:4px 0; margin-bottom:6px; font:600 .9375rem var(--sans); color:var(--brand); text-decoration:underline; text-underline-offset:3px; }
+
+ .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:44px; padding:0 22px; background:var(--brand); color:#fff; border:1px solid var(--brand); border-radius:var(--r); font:600 .9375rem/1.2 var(--sans); text-decoration:none; transition:background .15s; }
+ .btn:hover{ background:var(--brand-dark); border-color:var(--brand-dark); color:#fff; }
+ .btn.alt{ background:transparent; color:var(--brand); }
+ .btn.alt:hover{ background:var(--brand); color:#fff; }
+ .btn.danger{ background:transparent; color:var(--err); border-color:#D2A39B; }
+ .btn.danger:hover{ background:var(--err); border-color:var(--err); color:#fff; }
+ .btn.sm{ min-height:36px; padding:0 14px; font-size:.875rem; }
+ .btn.block{ display:flex; width:100%; }
+ .btn:disabled{ opacity:.5; cursor:not-allowed; }
+ .link-btn{ cursor:pointer; background:none; border:0; padding:2px 0; color:var(--brand); font:600 .875rem var(--sans); text-decoration:underline; text-underline-offset:3px; }
+
+ .badge{ display:inline-flex; align-items:center; gap:7px; font-size:.8125rem; font-weight:600; white-space:nowrap; }
+ .badge::before{ content:""; width:8px; height:8px; border-radius:50%; background:currentColor; }
+ .badge.in{ color:var(--ok); } .badge.low{ color:var(--warn); } .badge.out{ color:var(--err); } .badge.made{ color:var(--info); } .badge.off{ color:var(--ink-2); }
+
+ .toolbar{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+ .toolbar input[type="search"]{ flex:1; min-width:220px; }
+ .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+ .chip{ cursor:pointer; background:var(--surface); border:1px solid var(--line-strong); border-radius:var(--r); padding:0 14px; min-height:38px; font:500 .875rem var(--sans); color:var(--ink); }
+ .chip:hover{ border-color:var(--brand); }
+ .chip[aria-pressed="true"]{ background:var(--brand); border-color:var(--brand); color:#fff; }
+ .chip b{ font-weight:600; margin-left:6px; opacity:.8; }
+
+ .panel{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); }
+ .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+ table.tbl{ width:100%; border-collapse:collapse; font-size:.9375rem; }
+ .tbl th,.tbl td{ padding:14px 16px; text-align:left; border-bottom:1px solid var(--line); vertical-align:middle; }
+ .tbl th{ font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2); font-weight:600; background:#FBF8F2; white-space:nowrap; }
+ .tbl tbody tr:last-child td{ border-bottom:0; }
+ .tbl tbody tr.click{ cursor:pointer; }
+ .tbl tbody tr.click:hover{ background:#FBF8F2; }
+ .tbl td.num,.tbl th.num{ text-align:right; white-space:nowrap; }
+ .ref{ font:600 1rem var(--serif); color:var(--brand); letter-spacing:.02em; }
+ .sub{ font-size:.8125rem; color:var(--ink-2); }
+ .empty{ text-align:center; padding:56px 16px; color:var(--ink-2); }
+ .empty strong{ display:block; color:var(--ink); font:600 1.125rem var(--serif); margin-bottom:6px; }
+
+ .field{ margin-bottom:16px; }
+ .field label{ display:block; margin-bottom:6px; font-size:.875rem; font-weight:600; }
+ .field .opt{ font-weight:400; color:var(--ink-2); }
+ input[type="text"],input[type="email"],input[type="password"],input[type="search"],input[type="number"],select,textarea{
+   width:100%; min-height:44px; padding:9px 12px; font:inherit; color:var(--ink); background:var(--surface); border:1px solid var(--line-strong); border-radius:var(--r); transition:border-color .15s, box-shadow .15s; }
+ textarea{ min-height:84px; resize:vertical; }
+ input:hover,select:hover,textarea:hover{ border-color:var(--ink-2); }
+ input:focus,select:focus,textarea:focus{ outline:0; border-color:var(--brand); box-shadow:0 0 0 3px rgba(158,59,42,.16); }
+ input[aria-invalid="true"],select[aria-invalid="true"],textarea[aria-invalid="true"]{ border-color:var(--err); background:#FFFAF9; }
+ .row2{ display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }
+ .row3{ display:grid; grid-template-columns:2fr 1fr 1fr; gap:0 16px; }
+ .check{ display:flex; align-items:center; gap:10px; font-size:.9375rem; }
+ .check input{ width:18px; height:18px; min-height:0; accent-color:var(--brand); }
+ .form-error,.form-ok{ padding:12px 16px; border-left:4px solid var(--err); background:#FBE9E6; color:#6f2017; border-radius:0 var(--r) var(--r) 0; font-size:.9375rem; margin:14px 0; }
+ .form-ok{ border-left-color:var(--ok); background:#E8F0E6; color:#27472c; }
+ .field-error{ display:flex; gap:7px; color:var(--err); font-size:.875rem; line-height:1.4; margin-top:6px; }
+ .field-error::before{ content:"!"; flex:0 0 16px; height:16px; margin-top:1px; border-radius:50%; background:var(--err); color:#fff; font:700 .6875rem/16px var(--sans); text-align:center; }
+ .hint{ font-size:.8125rem; color:var(--ink-2); margin-top:6px; }
+
+ .loading-block{ display:flex; align-items:center; gap:12px; padding:36px 0; color:var(--ink-2); }
+ .spinner{ display:inline-block; width:18px; height:18px; border:2.5px solid var(--line); border-top-color:var(--brand); border-radius:50%; animation:spin .8s linear infinite; flex:none; }
+ @keyframes spin{ to{ transform:rotate(360deg); } }
+ .btn.is-loading::before{ content:""; width:14px; height:14px; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; border-radius:50%; animation:spin .8s linear infinite; }
+ .btn.alt.is-loading::before{ border-color:rgba(158,59,42,.3); border-top-color:var(--brand); }
+
+ /* order and invoice pages */
+ .order-layout{ display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:32px; align-items:start; }
+ .order-side{ display:grid; gap:16px; }
+ .box{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px 20px; }
+ .box h3{ font:600 .75rem/1.2 var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); margin-bottom:10px; }
+ .box p{ font-size:.9375rem; }
+ .note-box{ padding:12px 16px; border-left:4px solid var(--accent); background:#FAF0DA; color:#5d3f08; border-radius:0 var(--r) var(--r) 0; font-size:.9375rem; }
+ .items td input{ width:76px; text-align:center; padding:6px 8px; min-height:38px; }
+ .items td.short{ color:var(--err); font-weight:600; }
+ .items td.ok{ color:var(--ink-2); }
+ .money-in{ display:flex; align-items:center; gap:8px; }
+ .money-in input{ width:120px; }
+ .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+ .totals{ margin-left:auto; max-width:340px; margin-top:20px; }
+ .totals div{ display:flex; justify-content:space-between; gap:20px; padding:5px 0; font-size:.9375rem; }
+ .totals .grand{ font:600 1.25rem var(--serif); border-top:1px solid var(--ink); margin-top:8px; padding-top:12px; }
+ .totals .gst{ font-size:.8125rem; color:var(--ink-2); }
+ .dlg-foot{ position:sticky; bottom:0; z-index:40; display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:32px -24px -96px; padding:14px 24px calc(14px + env(safe-area-inset-bottom)); background:var(--surface); border-top:1px solid var(--line); }
+ .dlg-foot .grow{ flex:1; }
+ .invoice-frame{ width:100%; height:68vh; min-height:420px; border:1px solid var(--line); border-radius:var(--r); background:#fff; }
+ @media (max-width:960px){ .order-layout{ grid-template-columns:minmax(0,1fr); } .order-side{ order:-1; } }
+ .order-main{ min-width:0; }
+
+ /* products and settings */
+ .pgroup{ margin:32px 0 10px; font:600 1.25rem var(--serif); padding-bottom:10px; border-bottom:1px solid var(--ink); }
+ details.pcard{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); margin-bottom:10px; }
+ details.pcard > summary{ cursor:pointer; list-style:none; padding:16px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+ details.pcard > summary::-webkit-details-marker{ display:none; }
+ details.pcard > summary::before{ content:"+"; color:var(--brand); font-weight:700; width:14px; }
+ details.pcard[open] > summary::before{ content:"–"; }
+ .pname{ font-weight:600; }
+ .psizes{ font-size:.8125rem; color:var(--ink-2); margin-left:auto; text-align:right; }
+ .pbody{ padding:6px 20px 20px; border-top:1px solid var(--line); }
+ .vtable{ width:100%; border-collapse:collapse; margin:10px 0; }
+ .vtable th{ font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2); text-align:left; padding:6px; font-weight:600; }
+ .vtable td{ padding:6px; vertical-align:middle; }
+ .vtable input[type="text"],.vtable input[type="number"]{ min-height:40px; padding:7px 10px; }
+ .actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; align-items:center; }
+ .radio{ display:flex; gap:12px; align-items:flex-start; padding:16px; border:1px solid var(--line-strong); border-radius:var(--r); background:var(--surface); margin-bottom:12px; cursor:pointer; }
+ .radio:has(input:checked){ border-color:var(--brand); box-shadow:inset 0 0 0 1px var(--brand); }
+ .radio input{ margin-top:4px; accent-color:var(--brand); }
+ .radio b{ display:block; }
+ .radio span{ font-size:.875rem; color:var(--ink-2); }
+ .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:1000; background:var(--ink); color:#fff; padding:12px 18px; border-radius:var(--r); font-size:.9375rem; max-width:min(92vw,460px); text-align:center; box-shadow:0 12px 32px rgba(42,38,34,.25); }
+
+ @media (max-width:1024px){ main{ padding:28px 20px 96px; } .tbl th,.tbl td{ padding:12px 10px; } .dlg-foot{ margin-left:-20px; margin-right:-20px; padding-left:20px; padding-right:20px; } }
+ @media (max-width:700px){
+   .grid2,.row2,.row3{ grid-template-columns:1fr; }
+   .tbl .hide-sm{ display:none; }
+   .psizes{ margin-left:0; text-align:left; flex-basis:100%; }
+   .vtable,.vtable tbody,.vtable tr,.vtable td{ display:block; }
+   .vtable thead{ display:none; }
+   .vtable tr{ border:1px solid var(--line); border-radius:var(--r); padding:10px; margin-bottom:10px; background:var(--bg); }
+   .vtable td::before{ content:attr(data-l); display:block; font-size:.75rem; color:var(--ink-2); }
+ }
+ @media (max-width:480px){
+   .bar{ padding:8px 16px; } .tabs{ padding:0 16px; gap:20px; } main{ padding:22px 16px 96px; }
+   .logo small{ display:none; } .center-box{ margin:24px 0; padding:24px 18px; }
+   .dlg-foot{ margin-left:-16px; margin-right:-16px; padding-left:16px; padding-right:16px; } .dlg-foot .btn{ flex:1 1 auto; }
+ }
+</style>
+</head>
+<body data-page="admin">
+<a class="skip-link" href="#main">Skip to main content</a>
+<header>
+ <div class="bar">
+   <a class="logo" href="admin.html"><img src="logo.png" alt="Swamy Foods logo" width="34" height="34" onerror="this.remove()">Swamy <span>Foods</span><small>Admin</small></a>
+   <div class="who" id="who" hidden>
+     <span id="whoEmail"></span>
+     <a href="index.html">View shop</a>
+     <button class="btn alt sm" type="button" id="btnLogout">Log out</button>
+   </div>
+ </div>
+ <div class="tabs" id="tabs" role="tablist" hidden>
+   <button type="button" role="tab" data-tab="orders" aria-selected="true">Orders <span class="pill" id="newPill" hidden>0</span></button>
+   <button type="button" role="tab" data-tab="products" aria-selected="false">Products & stock</button>
+   <button type="button" role="tab" data-tab="settings" aria-selected="false">Settings</button>
+ </div>
+</header>
+<main id="main"></main>
+<div id="orderDlg" hidden></div>
+<div id="invoiceDlg" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+/* =====================================================================
+  SWAMY FOODS - ADMIN
+  Everything here talks to the database through the admin_* functions in
+  schema.sql, which refuse anyone who is not in the "admins" table. So even
+  though this page is public, nobody can use it without an admin login.
+  ===================================================================== */
+(function(){
+ "use strict";
+ const { h, fmtMoney, fmtDate, esc } = SwamyUtil;
+ const $ = s => document.querySelector(s);
+ const main = $("#main");
+
+ const STATUS = {
+   submitted:{ label:"New",          cls:"made" },
+   confirmed:{ label:"Confirmed",    cls:"in" },
+   invoiced: { label:"Invoice sent", cls:"low" },
+   paid:     { label:"Paid",         cls:"in" },
+   shipped:  { label:"Shipped",      cls:"in" },
+   cancelled:{ label:"Cancelled",    cls:"out" }
+ };
+ const STATUS_ORDER = ["submitted","confirmed","invoiced","paid","shipped","cancelled"];
+ const EDITABLE = ["submitted","confirmed","invoiced"];
+
+ const state = { view:null, curOrder:null, authed:false, tab:"orders", orders:null, filter:"all", q:"", catalog:null, settings:null, openIds:new Set(), addingProduct:false, prodQ:"" };
+
+ /* ------------------------------ helpers ------------------------------ */
+ let toastTimer = null;
+ function toast(msg, ms){
+   const t = $("#toast");
+   t.textContent = msg; t.hidden = false;
+   clearTimeout(toastTimer);
+   toastTimer = setTimeout(() => { t.hidden = true; }, ms || 3200);
+ }
+ const loading = text => h("div", { class:"loading-block", role:"status" },
+   h("span", { class:"spinner", "aria-hidden":"true" }), text || "Loading…");
+ function fieldE(label, input, name){
+   const holder = h("p", { class:"field-error", id:"err-" + name, hidden:true });
+   input.setAttribute("aria-describedby", "err-" + name);
+   input.addEventListener("input", () => { input.removeAttribute("aria-invalid"); holder.hidden = true; });
+   return h("div", { class:"field" }, tie(h("label", null, label), input), input, holder);
+ }
+ function markErr(input, msg){
+   input.setAttribute("aria-invalid", "true");
+   const wrap = input.closest(".field");
+   const holder = wrap && wrap.querySelector(".field-error");
+   if (holder){ holder.textContent = msg; holder.hidden = false; }
+ }
+ function errBox(msg){ return h("div", { class:"form-error", role:"alert" }, msg); }
+ function badge(status){
+   const s = STATUS[status] || { label:status, cls:"off" };
+   return h("span", { class:"badge " + s.cls }, s.label);
+ }
+ const num = v => Math.round((Number(v) || 0) * 100) / 100;
+ async function copyText(text, okMsg){
+   try { await navigator.clipboard.writeText(text); toast(okMsg || "Copied."); }
+   catch (e){
+     const ta = h("textarea", { style:"position:fixed;left:-9999px" }, text);
+     document.body.appendChild(ta); ta.select();
+     try { document.execCommand("copy"); toast(okMsg || "Copied."); } catch (e2){ toast("Couldn't copy. Select the text and copy it by hand."); }
+     ta.remove();
+   }
+ }
+ // The order and invoice screens are full pages (not pop-ups). dlg only says which one.
+ function dlgShow(dlg, title, body, foot){
+   const kind = dlg.id === "invoiceDlg" ? "invoice" : "order";
+   state.view = kind;
+   const back = h("button", { class:"back-link", type:"button", id:"backLink", onclick:() => closeView(dlg) }, "← " + (kind === "invoice" ? "Back to order" : "Back to orders"));
+   main.replaceChildren(...[back, h("h1", { id:dlg.id + "Title" }, title), body, foot].filter(Boolean));
+   window.scrollTo(0, 0);
+ }
+ function closeView(dlg){
+   if (dlg.id === "invoiceDlg" && state.curOrder) { drawOrder(state.curOrder); return; }
+   go("#/orders");
+ }
+ let uid = 0;
+ // ties a visible label to its control, so screen readers announce it and clicking the label focuses the field
+ function tie(labelEl, ctl){
+   const el = ctl && (ctl.matches && ctl.matches("input,select,textarea") ? ctl : (ctl.querySelector ? ctl.querySelector("input,select,textarea") : null));
+   if (!el) return labelEl;
+   if (!el.id) el.id = "af" + (++uid);
+   labelEl.setAttribute("for", el.id);
+   return labelEl;
+ }
+ function field(label, input, opt){
+   return h("div", { class:"field" }, tie(h("label", null, label, opt ? h("span", { class:"opt" }, " (" + opt + ")") : null), input), input);
+ }
+ const txt = (name, value, extra) => h("input", Object.assign({ type:"text", name, value:value == null ? "" : value, autocomplete:"off" }, extra || {}));
+
+ /* ------------------------------ sign in ------------------------------ */
+ function setChrome(on){
+   $("#tabs").hidden = !on;
+   $("#who").hidden = !on;
+   if (on) $("#whoEmail").textContent = (SB.auth.getUser() || {}).email || "";
+ }
+ function showMessage(title, text, actions){
+   setChrome(false);
+   main.replaceChildren(h("div", { class:"center-box" }, h("h1", null, title), h("p", { class:"lead" }, text), actions || null));
+ }
+ function showLogin(msg){
+   setChrome(false);
+   const err = h("div", { class:"form-error", role:"alert", hidden:true });
+   if (msg){ err.textContent = msg; err.hidden = false; }
+   const btn = h("button", { class:"btn block", type:"submit" }, "Log in");
+   const emailIn = h("input", { type:"email", name:"email", autocomplete:"username" });
+   const pwIn = h("input", { type:"password", name:"password", autocomplete:"current-password" });
+   const form = h("form", { novalidate:true }, fieldE("Email", emailIn, "email"), fieldE("Password", pwIn, "password"), err, btn);
+   let working = false;
+   form.addEventListener("submit", async ev => {
+     ev.preventDefault();
+     if (working) return;
+     err.hidden = true;
+     const email = emailIn.value.trim(), pw = pwIn.value;
+     let first = null;
+     if (!email){ markErr(emailIn, "Enter your email address."); first = emailIn; }
+     if (!pw){ markErr(pwIn, "Enter your password."); first = first || pwIn; }
+     if (first){ first.focus(); return; }
+     working = true; btn.disabled = true; btn.classList.add("is-loading"); btn.textContent = "Logging in…";
+     try { await SB.auth.signIn(email, pw); await boot(); }
+     catch (e){
+       working = false; btn.disabled = false; btn.classList.remove("is-loading"); btn.textContent = "Log in";
+       err.textContent = /invalid login/i.test(e.message) ? "That email and password don't match." : e.message;
+       err.hidden = false;
+     }
+   });
+   main.replaceChildren(h("div", { class:"center-box" }, h("h1", null, "Admin log in"),
+     h("p", { class:"lead" }, "Use the admin account you set up for the shop."), form));
+ }
+ async function boot(){
+   if (!SB.configured){
+     return showMessage("Not connected yet",
+       "Open config.js and paste your Supabase project URL and anon key, then reload this page.");
+   }
+   if (!SB.auth.getSession()) return showLogin();
+   let ok;
+   try { ok = await SB.rpc("is_admin", {}); }
+   catch (e){
+     if (e.code === "network") return showMessage("Can't reach the server", e.message,
+       h("button", { class:"btn", type:"button", onclick:boot }, "Try again"));
+     return showLogin("Please log in again.");
+   }
+   if (ok !== true){
+     return showMessage("This account isn't an admin",
+       "You're logged in as " + ((SB.auth.getUser() || {}).email || "") + ", but that account hasn't been given admin access. See the setup guide, step 5.",
+       h("button", { class:"btn alt", type:"button", onclick:async () => { await SB.auth.signOut(); showLogin(); } }, "Log out"));
+   }
+   setChrome(true);
+   state.authed = true;
+   route();
+ }
+ $("#btnLogout").addEventListener("click", async () => { await SB.auth.signOut(); state.orders = null; state.authed = false; state.view = null; showLogin(); });
+ document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => go("#/" + b.dataset.tab)));
+ function showTab(tab){
+   state.tab = tab;
+   state.view = null;
+   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+   if (tab === "orders") ordersView();
+   else if (tab === "products") productsView();
+   else settingsView();
+ }
+ function route(){
+   if (!state.authed) return;
+   const m = location.hash.match(/^#\/order\/([0-9a-f-]{36})$/i);
+   if (m) {
+     state.tab = "orders";
+     document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === "orders")));
+     openOrder(m[1]);
+     return;
+   }
+   const t = (location.hash.match(/^#\/(orders|products|settings)$/) || [])[1] || state.tab || "orders";
+   showTab(t);
+ }
+ function go(hash){ if (location.hash === hash) route(); else location.hash = hash; }
+ window.addEventListener("hashchange", route);
+
+ /* ------------------------------ ORDERS ------------------------------ */
+ async function loadOrders(silent){
+   try {
+     state.orders = await SB.rpc("admin_list_orders", {});
+     const n = state.orders.filter(o => o.status === "submitted").length;
+     const pill = $("#newPill");
+     pill.textContent = n; pill.hidden = n === 0;
+     return true;
+   } catch (e){
+     if (!silent) toast(e.message, 5000);
+     return false;
+   }
+ }
+ async function ordersView(){
+   main.replaceChildren(loading("Loading orders…"));
+   await loadOrders();
+   drawOrders();
+ }
+ function drawOrders(){
+   if (state.tab !== "orders" || state.view) return;
+   const all = state.orders || [];
+   const counts = { all:all.length };
+   STATUS_ORDER.forEach(s => { counts[s] = all.filter(o => o.status === s).length; });
+   const q = state.q.trim().toLowerCase();
+   const rows = all.filter(o =>
+     (state.filter === "all" || o.status === state.filter) &&
+     (!q || [o.ref, o.customer_name, o.customer_email, o.customer_phone, o.invoice_no, o.suburb, o.postcode]
+             .some(x => String(x || "").toLowerCase().includes(q))));
+
+   const search = h("input", { type:"search", placeholder:"Search name, email, phone, order or invoice number", value:state.q, "aria-label":"Search orders" });
+   search.addEventListener("input", () => {
+     state.q = search.value;
+     const pos = search.selectionStart;
+     drawOrders();
+     const again = $("#main input[type=search]");
+     if (again){ again.focus(); try { again.setSelectionRange(pos, pos); } catch (e){} }
+   });
+   const chips = h("div", { class:"chips" }, ["all"].concat(STATUS_ORDER).map(s =>
+     h("button", { class:"chip", type:"button", "aria-pressed":String(state.filter === s),
+                   onclick:() => { state.filter = s; drawOrders(); } },
+       s === "all" ? "All" : STATUS[s].label, h("b", null, String(counts[s])))));
+
+   let body;
+   if (!all.length){
+     body = h("div", { class:"empty" }, h("strong", null, "No orders yet"), "Orders customers send will appear here.");
+   } else if (!rows.length){
+     body = h("div", { class:"empty" }, h("strong", null, "Nothing matches"), "Try a different search or filter.");
+   } else {
+     body = h("div", { class:"table-scroll" }, h("table", { class:"tbl" },
+       h("thead", null, h("tr", null,
+         h("th", null, "Order"), h("th", { class:"hide-sm" }, "Placed"), h("th", null, "Customer"),
+         h("th", { class:"num hide-sm" }, "Items"), h("th", { class:"num" }, "Total"), h("th", null, "Status"))),
+       h("tbody", null, rows.map(o =>
+         h("tr", { class:"click", onclick:() => go("#/order/" + o.id) },
+           h("td", null,
+             h("button", { class:"link-btn ref", type:"button", style:"text-decoration:none", onclick:e => { e.stopPropagation(); go("#/order/" + o.id); } }, o.ref),
+             o.invoice_no ? h("div", { class:"sub" }, o.invoice_no) : null),
+           h("td", { class:"hide-sm" }, fmtDate(o.created_at)),
+           h("td", null, o.customer_name, h("div", { class:"sub" }, o.suburb + " " + o.state + " " + o.postcode)),
+           h("td", { class:"num hide-sm" }, String(o.items_count)),
+           h("td", { class:"num" }, fmtMoney(o.total)),
+           h("td", null, badge(o.status)))))));
+   }
+   main.replaceChildren(
+     h("h1", null, "Orders"),
+     h("p", { class:"lead" }, "Open an order to check stock, adjust it, add delivery and send the invoice."),
+     h("div", { class:"toolbar" }, search,
+       h("button", { class:"btn alt sm", type:"button", onclick:async () => { await loadOrders(); drawOrders(); toast("Orders refreshed."); } }, "Refresh")),
+     chips, h("div", { class:"panel" }, body));
+ }
+
+ async function ensureSettings(){
+   if (state.settings) return state.settings;
+   state.settings = await SB.rpc("admin_get_settings", {});
+   return state.settings;
+ }
+
+ async function openOrder(id){
+   const dlg = $("#orderDlg");
+   dlgShow(dlg, "Order", loading("Loading order…"));
+   try {
+     const [ord] = await Promise.all([SB.rpc("admin_get_order", { p_id:id }), ensureSettings().catch(() => null)]);
+     drawOrder(ord);
+   } catch (e){
+     dlgShow(dlg, "Order", errBox(e.message));
+   }
+ }
+
+ function drawOrder(ord){
+   const dlg = $("#orderDlg");
+   state.curOrder = ord;
+   const st = state.settings || {};
+   const editable = EDITABLE.includes(ord.status);
+   const c = ord.customer;
+   const addressText = [c.name, c.address_line1, c.address_line2, c.suburb + " " + c.state + " " + c.postcode, c.phone].filter(Boolean).join("\n");
+   const err = h("div", { class:"form-error", role:"alert", hidden:true });
+   const showErr = m => { err.textContent = m; err.hidden = false; err.scrollIntoView({ block:"nearest" }); };
+
+   /* ---- items ---- */
+   const qtyIn = new Map();
+   const stockCell = new Map();
+   const lineCell = new Map();
+   const itemsBody = h("tbody", null, ord.items.map(i => {
+     const input = h("input", { type:"number", min:"0", max:"999", step:"1", value:String(i.qty), disabled:!editable,
+                                "aria-label":"Quantity of " + i.name + " " + i.weight });
+     qtyIn.set(i.id, input);
+     const sc = h("td"); stockCell.set(i.id, sc);
+     const lc = h("td", { class:"num" }); lineCell.set(i.id, lc);
+     input.addEventListener("input", recalc);
+     return h("tr", null,
+       h("td", null, i.name), h("td", null, i.weight), h("td", { class:"num" }, fmtMoney(i.unit_price)),
+       h("td", null, input), sc, lc);
+   }));
+
+   /* ---- fees + note ---- */
+   const ship = h("input", { type:"number", min:"0", step:"0.01", value:String(num(ord.shipping_fee)), disabled:!editable, "aria-label":"Delivery fee" });
+   const disc = h("input", { type:"number", min:"0", step:"0.01", value:String(num(ord.discount)), disabled:!editable, "aria-label":"Discount" });
+   const note = h("textarea", { disabled:!editable, "aria-label":"Your private note", maxlength:"1000" }, ord.admin_note || "");
+   ship.addEventListener("input", recalc); disc.addEventListener("input", recalc); note.addEventListener("input", recalc);
+   const parcel = h("span", { class:"hint" });
+   const totalsBox = h("div", { class:"totals" });
+   const stockMsg = h("div", { class:"note-box" });
+
+   function readDraft(){
+     const items = [];
+     for (const i of ord.items){
+       const v = qtyIn.get(i.id).value.trim();
+       if (!/^[0-9]{1,3}$/.test(v)) return { error:"Quantity for " + i.name + " (" + i.weight + ") must be a whole number, 0 or more." };
+       items.push({ id:i.id, qty:Number(v) });
+     }
+     const s = ship.value.trim() === "" ? "0" : ship.value.trim();
+     const d = disc.value.trim() === "" ? "0" : disc.value.trim();
+     if (!/^[0-9]{1,4}(\.[0-9]{1,2})?$/.test(s)) return { error:"Delivery must be an amount like 15 or 15.50." };
+     if (!/^[0-9]{1,6}(\.[0-9]{1,2})?$/.test(d)) return { error:"Discount must be an amount like 5 or 5.50." };
+     return { items, shipping:Number(s), discount:Number(d), note:note.value };
+   }
+   function isDirty(){
+     const d = readDraft();
+     if (d.error) return true;
+     return d.items.some(x => x.qty !== ord.items.find(i => i.id === x.id).qty) ||
+            num(d.shipping) !== num(ord.shipping_fee) || num(d.discount) !== num(ord.discount) ||
+            (d.note || "").trim() !== (ord.admin_note || "").trim();
+   }
+   function recalc(){
+     const d = readDraft();
+     let sub = 0, anyShort = false;
+     ord.items.forEach(i => {
+       const q = d.error ? i.qty : d.items.find(x => x.id === i.id).qty;
+       lineCell.get(i.id).textContent = fmtMoney(num(i.unit_price * q));
+       sub += num(i.unit_price * q);
+       const sc = stockCell.get(i.id);
+       if (i.stock === null || i.stock === undefined){ sc.textContent = "Made to order"; sc.className = "ok"; return; }
+       const needMore = ord.stock_deducted ? Math.max(0, q - i.qty) : q;
+       if (needMore > i.stock){ anyShort = true; sc.textContent = "Only " + i.stock + " in stock"; sc.className = "short"; }
+       else { sc.textContent = i.stock + " in stock"; sc.className = "ok"; }
+     });
+     sub = num(sub);
+     const dis = d.error ? num(ord.discount) : Math.min(num(d.discount), sub);
+     const sh = d.error ? num(ord.shipping_fee) : num(d.shipping);
+     const total = num(sub - dis + sh);
+     totalsBox.replaceChildren(...[
+       h("div", null, h("span", null, "Items"), h("span", null, fmtMoney(sub))),
+       dis > 0 ? h("div", null, h("span", null, "Discount"), h("span", null, "−" + fmtMoney(dis))) : null,
+       h("div", null, h("span", null, "Delivery"), h("span", null, fmtMoney(sh))),
+       h("div", { class:"grand" }, h("span", null, "Total"), h("span", null, fmtMoney(total))),
+       st.gst_registered === true ? h("div", { class:"gst" }, h("span", null, "Includes GST"), h("span", null, fmtMoney(num(total / 11)))) : null
+     ].filter(Boolean));
+     const qtyNow = i => (d.error ? i.qty : d.items.find(x => x.id === i.id).qty);
+     const nItems = ord.items.reduce((acc, i) => acc + qtyNow(i), 0);
+     const wt = SwamyWeight.orderWeight(ord.items.map(i => ({ weight:i.weight, qty:qtyNow(i) })));
+     parcel.textContent = "Parcel: " + nItems + (nItems === 1 ? " item" : " items") + (wt ? " · about " + wt.text : " · weight not known") +
+                          " · to " + c.suburb + " " + c.state + " " + c.postcode + ". Delivery depends on quantity and weight.";
+     stockMsg.hidden = !(editable && anyShort);
+     stockMsg.textContent = "Some items are short on stock. Lower the quantity (or set it to 0 to remove the line), or update stock in the Products tab first.";
+     saveBtn.disabled = !editable || !isDirty() || !!d.error;
+     if (d.error && editable) saveBtn.title = d.error; else saveBtn.removeAttribute("title");
+   }
+
+   /* ---- actions ---- */
+   const foot = h("div", { class:"dlg-foot" });
+   const saveBtn = h("button", { class:"btn alt", type:"button", onclick:() => run(async () => { const o = await doSave(); toast("Changes saved."); return o; }) }, "Save changes");
+   function setBusy(on){ foot.querySelectorAll("button, a.btn").forEach(b => { if (on) { b.dataset.was = b.disabled ? "1" : ""; b.disabled = true; } else if (b.dataset.was !== undefined) { b.disabled = b.dataset.was === "1"; delete b.dataset.was; } }); }
+   async function run(fn, after){
+     err.hidden = true; setBusy(true);
+     try {
+       const next = await fn();
+       loadOrders(true).then(drawOrders);
+       if (next) drawOrder(next);
+       if (after) after(next);
+     } catch (e){ setBusy(false); showErr(e.message); recalc(); }
+   }
+   async function doSave(){
+     const d = readDraft();
+     if (d.error) throw new Error(d.error);
+     return SB.rpc("admin_update_order", { p_order_id:ord.id, p_items:d.items, p_shipping:d.shipping, p_discount:d.discount, p_note:d.note });
+   }
+   const ensureSaved = async () => (isDirty() ? doSave() : ord);
+   const setStatus = (s, msg) => run(async () => {
+     await ensureSaved();
+     const o = await SB.rpc("admin_set_order_status", { p_order_id:ord.id, p_status:s });
+     toast(msg || ("Marked as " + STATUS[s].label.toLowerCase() + "."));
+     return o;
+   });
+   const makeInvoice = () => {
+     const d = readDraft();
+     if (!d.error && d.shipping === 0 &&
+         !window.confirm("Delivery is $0 on this invoice. Create it with free delivery?")) return;
+     run(async () => {
+       await ensureSaved();
+       return SB.rpc("admin_issue_invoice", { p_order_id:ord.id });
+     }, o => { if (o) openInvoice(o); });
+   };
+   const cancelOrder = () => {
+     if (!window.confirm("Cancel order " + ord.ref + "? Any stock set aside for it goes back on the shelf.")) return;
+     setStatus("cancelled", "Order cancelled.");
+   };
+
+   const btns = [];
+   const primary = (label, fn) => h("button", { class:"btn", type:"button", onclick:fn }, label);
+   const alt = (label, fn) => h("button", { class:"btn alt", type:"button", onclick:fn }, label);
+   switch (ord.status){
+     case "submitted": btns.push(primary("Confirm order", () => setStatus("confirmed", "Order confirmed.")), alt("Create invoice", makeInvoice)); break;
+     case "confirmed": btns.push(primary("Create invoice", makeInvoice)); break;
+     case "invoiced":  btns.push(primary("Open invoice", () => openInvoice(ord)), alt("Mark as paid", () => setStatus("paid"))); break;
+     case "paid":      btns.push(primary("Mark as shipped", () => setStatus("shipped")), alt("Open invoice", () => openInvoice(ord))); break;
+     case "shipped":   btns.push(primary("Open invoice", () => openInvoice(ord))); break;
+     case "cancelled": btns.push(primary("Reopen as new order", () => setStatus("submitted", "Order reopened."))); break;
+   }
+   foot.append(saveBtn, ...btns, h("span", { class:"grow" }));
+   if (ord.status !== "cancelled" && ord.status !== "shipped") foot.append(h("button", { class:"btn danger", type:"button", onclick:cancelOrder }, "Cancel order"));
+
+   const manual = h("select", { "aria-label":"Set status manually" }, STATUS_ORDER.map(s => h("option", { value:s, selected:s === ord.status }, STATUS[s].label)));
+   const manualBtn = h("button", { class:"btn alt sm", type:"button", onclick:() => {
+     if (manual.value === ord.status) return;
+     if (manual.value === "cancelled") return cancelOrder();
+     setStatus(manual.value);
+   } }, "Apply");
+
+   const side = h("aside", { class:"order-side", "aria-label":"Customer and delivery" },
+     h("div", { class:"box" }, h("h3", null, "Status"),
+       badge(ord.status),
+       h("p", { class:"sub", style:"margin-top:10px" }, "Placed " + fmtDate(ord.created_at)),
+       h("p", { class:"sub" }, ord.has_account ? "Customer has an account" : "Guest checkout"),
+       ord.invoice_no ? h("p", { class:"sub" }, "Invoice " + ord.invoice_no) : null),
+     h("div", { class:"box" }, h("h3", null, "Customer"),
+       h("p", null, h("strong", null, c.name)),
+       h("p", null, h("a", { href:"mailto:" + c.email }, c.email)),
+       h("p", null, h("a", { href:"tel:" + c.phone.replace(/[^0-9+]/g, "") }, c.phone))),
+     h("div", { class:"box" }, h("h3", null, "Deliver to"),
+       h("p", { style:"white-space:pre-line" }, [c.address_line1, c.address_line2, c.suburb + " " + c.state + " " + c.postcode].filter(Boolean).join("\n")),
+       h("button", { class:"link-btn", type:"button", style:"margin-top:8px", onclick:() => copyText(addressText, "Address copied.") }, "Copy name, address and phone")),
+     ord.customer_note ? h("div", { class:"note-box" }, h("strong", null, "Customer note: "), ord.customer_note) : null);
+   const mainCol = h("div", { class:"order-main" },
+     h("p", { class:"sub", style:"margin-bottom:12px" },
+       ord.stock_deducted ? "Stock for this order is already set aside (taken off the shelf count)."
+                          : "Stock has not been taken off yet. It will come off when you confirm or invoice this order."),
+     stockMsg,
+     h("div", { class:"panel table-scroll" }, h("table", { class:"tbl items" },
+       h("thead", null, h("tr", null, h("th", null, "Item"), h("th", null, "Size"), h("th", { class:"num" }, "Price"),
+                          h("th", null, "Qty"), h("th", null, "Stock now"), h("th", { class:"num" }, "Amount"))),
+       itemsBody)),
+     h("div", { class:"grid2", style:"margin-top:24px" },
+       h("div", null,
+         field("Delivery", h("div", { class:"money-in" }, "$", ship)),
+         h("div", { class:"hint", style:"margin:-8px 0 14px" }, parcel),
+         field("Discount", h("div", { class:"money-in" }, "$", disc))),
+       h("div", null, field("Your private note", note, "customers never see this"))),
+     totalsBox,
+     err,
+     editable ? null : h("p", { class:"sub", style:"margin-top:16px" }, "This order is " + STATUS[ord.status].label.toLowerCase() + ", so it's locked. Use \"Change status\" below if you really need to edit it."),
+     h("details", { style:"margin-top:20px" }, h("summary", { class:"sub", style:"cursor:pointer" }, "Change status manually"),
+       h("div", { style:"display:flex;gap:8px;margin-top:10px;max-width:340px" }, manual, manualBtn)));
+   const body = h("div", { class:"order-layout" }, mainCol, side);
+
+   dlgShow(dlg, "Order " + ord.ref, body, foot);
+   recalc();
+ }
+
+ /* ------------------------------ INVOICE ------------------------------ */
+ // NOTE: the closing body/head/html tags inside the invoice template below are written with a backslash
+ // (less-than, backslash, slash, body) on purpose. Live-reload tools (VS Code Live Server and similar) insert their
+ // own script at the FIRST closing body tag they find anywhere in the file. If that text appeared in this script
+ // it would cut the whole script in half and the page would show raw code.
+ /* ------------------------------ INVOICE ------------------------------ */
+ // ONE template is used for the preview, the printout / PDF and the email. It is built from tables with
+ // inline styles only, because email programs ignore most other CSS (no flexbox, no classes, no <style>).
+ const INK = { brand:"#9E3B2A", dark:"#2A2622", accent:"#A87412", muted:"#5F564D", line:"#E4DCCE", tint:"#F8F4EC", ok:"#3D6A43" };
+ function invoiceBody(ord, st){
+   const c = ord.customer, gst = st.gst_registered === true;
+   const issued = ord.invoice_issued_at ? new Date(ord.invoice_issued_at) : new Date();
+   const date = issued.toLocaleDateString("en-AU", { timeZone:"Australia/Melbourne", day:"numeric", month:"long", year:"numeric" });
+   const paid = ord.status === "paid" || ord.status === "shipped";
+   const dis = num(ord.discount), fee = num(ord.shipping_fee);
+   const no = ord.invoice_no || "DRAFT";
+   const FONT = "font-family:Arial,Helvetica,sans-serif;";
+   const SERIF = "font-family:Georgia,'Times New Roman',serif;";
+   const m = n => esc(fmtMoney(n));
+   const td = (css, inner, attrs) => "<td " + (attrs || "") + " style=\"" + FONT + css + "\">" + inner + "</td>";
+   const label = t => "<div style=\"" + FONT + "font-size:11px;letter-spacing:1px;text-transform:uppercase;color:" + INK.muted + ";margin-bottom:4px\">" + t + "</div>";
+   const lines = ord.items.map((i, k) =>
+     "<tr style=\"background:" + (k % 2 ? INK.tint : "#FFFFFF") + "\" bgcolor=\"" + (k % 2 ? INK.tint : "#FFFFFF") + "\">" +
+       td("padding:13px 14px;border-bottom:1px solid " + INK.line + ";font-size:14px;color:" + INK.dark, "<strong>" + esc(i.name) + "</strong><br><span style=\"font-size:12px;color:" + INK.muted + "\">" + esc(i.weight) + "</span>") +
+       td("padding:13px 8px;border-bottom:1px solid " + INK.line + ";font-size:14px;color:" + INK.dark + ";text-align:center", String(i.qty), "align=\"center\"") +
+       td("padding:13px 8px;border-bottom:1px solid " + INK.line + ";font-size:14px;color:" + INK.dark + ";text-align:right", m(i.unit_price), "align=\"right\"") +
+       td("padding:13px 14px;border-bottom:1px solid " + INK.line + ";font-size:14px;font-weight:bold;color:" + INK.dark + ";text-align:right", m(i.line_total), "align=\"right\"") +
+     "</tr>").join("");
+   const tot = (name, val, strong) => "<tr>" + td("padding:5px 0;font-size:14px;color:" + (strong ? INK.dark : INK.muted), name) + td("padding:5px 0;font-size:14px;text-align:right;color:" + INK.dark, val, "align=\"right\"") + "</tr>";
+   const header =
+     "<tr><td bgcolor=\"" + INK.brand + "\" style=\"background:" + INK.brand + ";padding:30px 24px\">" +
+       "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse\"><tr>" +
+         "<td valign=\"top\" style=\"" + FONT + "color:#FFFFFF\">" +
+           "<div style=\"" + SERIF + "font-size:26px;font-weight:bold;color:#FFFFFF\">" + esc(st.business_name || "Swamy Foods") + "</div>" +
+           "<div style=\"font-size:12px;line-height:1.6;color:#F3DDD7;margin-top:8px\">" + (st.abn ? "ABN " + esc(st.abn) + "<br>" : "") + esc(st.business_address || "") + "<br>" + esc(st.business_phone || "") + (st.business_email ? "  ·  " + esc(st.business_email) : "") + "</div>" +
+         "</td>" +
+         "<td valign=\"top\" align=\"right\" style=\"" + FONT + "color:#FFFFFF;text-align:right\">" +
+           "<div style=\"font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#F3DDD7;white-space:nowrap\">" + (gst ? "Tax invoice" : "Invoice") + "</div>" +
+           "<div style=\"" + SERIF + "font-size:24px;font-weight:bold;color:#FFFFFF;margin-top:6px;white-space:nowrap\">" + esc(no) + "</div>" +
+         "</td>" +
+       "</tr></table></td></tr>" +
+     "<tr><td bgcolor=\"" + INK.accent + "\" style=\"background:" + INK.accent + ";height:4px;line-height:4px;font-size:0\"> </td></tr>";
+   const meta =
+     "<tr><td bgcolor=\"" + INK.tint + "\" style=\"background:" + INK.tint + ";padding:18px 24px;border-bottom:1px solid " + INK.line + "\">" +
+       "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse\"><tr>" +
+         td("padding:0 12px 0 0;font-size:15px;color:" + INK.dark, label("Issued") + "<strong>" + esc(date) + "</strong>", "valign=\"top\"") +
+         td("padding:0 12px;font-size:15px;color:" + INK.dark, label("Order") + "<strong style=\"white-space:nowrap\">" + esc(ord.ref) + "</strong>", "valign=\"top\"") +
+         td("padding:0 0 0 12px;font-size:15px;text-align:right;color:" + INK.dark, label("Status") + (paid ? "<strong style=\"color:" + INK.ok + ";white-space:nowrap\">PAID</strong>" : "<strong style=\"color:" + INK.brand + ";white-space:nowrap\">Payment due</strong>"), "valign=\"top\" align=\"right\"") +
+       "</tr></table></td></tr>";
+   const addr =
+     "<tr><td style=\"padding:26px 24px 8px\">" +
+       "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse\"><tr>" +
+         td("padding:0 16px 0 0;font-size:14px;line-height:1.6;color:" + INK.dark, label("Bill to") + "<strong>" + esc(c.name) + "</strong><br>" + esc(c.email) + "<br>" + esc(c.phone), "valign=\"top\" width=\"50%\"") +
+         td("padding:0;font-size:14px;line-height:1.6;color:" + INK.dark, label("Deliver to") + esc(c.address_line1) + "<br>" + (c.address_line2 ? esc(c.address_line2) + "<br>" : "") + esc(c.suburb + " " + c.state + " " + c.postcode), "valign=\"top\" width=\"50%\"") +
+       "</tr></table></td></tr>";
+   const items =
+     "<tr><td style=\"padding:18px 24px 0\">" +
+       "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse;border:1px solid " + INK.line + "\">" +
+         "<tr bgcolor=\"" + INK.dark + "\" style=\"background:" + INK.dark + "\">" +
+           td("padding:11px 14px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#FFFFFF;text-align:left", "Item") +
+           td("padding:11px 8px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#FFFFFF;text-align:center", "Qty", "align=\"center\"") +
+           td("padding:11px 8px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#FFFFFF;text-align:right", "Unit price", "align=\"right\"") +
+           td("padding:11px 14px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#FFFFFF;text-align:right", "Amount", "align=\"right\"") +
+         "</tr>" + lines +
+       "</table></td></tr>";
+   const totals =
+     "<tr><td align=\"right\" style=\"padding:18px 24px 0\">" +
+       "<table role=\"presentation\" width=\"290\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse;width:290px;max-width:100%\">" +
+         tot("Items", m(ord.subtotal)) + (dis > 0 ? tot("Discount", "−" + m(dis)) : "") + tot("Delivery", fee > 0 ? m(fee) : "Free") +
+         "<tr><td colspan=\"2\" style=\"padding-top:8px\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse\"><tr bgcolor=\"" + INK.brand + "\" style=\"background:" + INK.brand + "\">" +
+           td("padding:14px 16px;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:#FFFFFF", "Total (AUD)") +
+           td("padding:14px 16px;" + SERIF + "font-size:22px;font-weight:bold;color:#FFFFFF;text-align:right", m(ord.total), "align=\"right\"") +
+         "</tr></table></td></tr>" +
+         (gst ? "<tr>" + td("padding:8px 0 0;font-size:12px;color:" + INK.muted, "Total includes GST of") + td("padding:8px 0 0;font-size:12px;text-align:right;color:" + INK.muted, m(num(ord.total / 11)), "align=\"right\"") + "</tr>" : "") +
+       "</table></td></tr>";
+   const pay = paid
+     ? "<tr><td style=\"padding:26px 24px 0\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse\"><tr><td bgcolor=\"#E8F0E6\" style=\"" + FONT + "background:#E8F0E6;border-left:4px solid " + INK.ok + ";padding:14px 18px;font-size:14px;color:#27472C\"><strong>Paid in full.</strong> Thank you for your payment.</td></tr></table></td></tr>"
+     : "<tr><td style=\"padding:26px 24px 0\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse\"><tr><td bgcolor=\"" + INK.tint + "\" style=\"" + FONT + "background:" + INK.tint + ";border-left:4px solid " + INK.accent + ";padding:16px 20px;font-size:14px;line-height:1.6;color:" + INK.dark + "\">" +
+         "<strong style=\"font-size:15px\">How to pay</strong><br>" + esc(st.bank_details || "Please contact us for payment details.").replace(/\n/g, "<br>") +
+         "<br><span style=\"color:" + INK.muted + "\">Please use <strong style=\"color:" + INK.dark + "\">" + esc(no) + "</strong> as your payment reference.</span></td></tr></table></td></tr>";
+   const foot =
+     "<tr><td style=\"padding:28px 24px 30px;" + FONT + "text-align:center;font-size:13px;line-height:1.6;color:" + INK.muted + "\" align=\"center\">" +
+       (st.invoice_footer ? "<div style=\"font-size:14px;color:" + INK.dark + ";margin-bottom:6px\">" + esc(st.invoice_footer) + "</div>" : "") +
+       esc(st.business_name || "Swamy Foods") + (st.abn ? " · ABN " + esc(st.abn) : "") + "</td></tr>";
+   return "<table role=\"presentation\" width=\"680\" cellpadding=\"0\" cellspacing=\"0\" bgcolor=\"#FFFFFF\" style=\"border-collapse:collapse;width:100%;max-width:680px;background:#FFFFFF;border:1px solid " + INK.line + "\">" +
+     header + meta + addr + items + totals + pay + foot + "</table>";
+ }
+ // The full page for the preview and for printing / saving as a PDF.
+ function invoiceHTML(ord, st){
+   const gst = st.gst_registered === true;
+   return "<!DOCTYPE html><html lang='en-AU'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>" + esc((gst ? "Tax invoice " : "Invoice ") + (ord.invoice_no || ord.ref)) + "</title><style>" +
+     "@page{size:A4;margin:12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;padding:24px 12px;background:#F1EADD}@media print{body{padding:0;background:#fff}}" +
+     "</style><\/head><body><div style='max-width:680px;margin:0 auto'>" + invoiceBody(ord, st) + "</div><\/body><\/html>";
+ }
+ // Plain-text version: what a mail program uses when it can't show the formatted one.
+ function emailText(ord, st){
+   const c = ord.customer;
+   const first = (c.name || "").split(/\s+/)[0] || "there";
+   const inv = ord.invoice_no || ord.ref;
+   const items = ord.items.map(i => "- " + i.name + " (" + i.weight + ") x " + i.qty + ": " + fmtMoney(i.line_total)).join("\n");
+   const bits = [
+     "Hi " + first + ",", "",
+     "Thank you for your order " + ord.ref + ". Your invoice is " + inv + ".", "",
+     "Items:", items,
+     num(ord.discount) > 0 ? "Discount: -" + fmtMoney(ord.discount) : null,
+     "Delivery: " + (num(ord.shipping_fee) > 0 ? fmtMoney(ord.shipping_fee) : "Free"),
+     "Total: " + fmtMoney(ord.total) + (st.gst_registered === true ? " (includes GST of " + fmtMoney(num(ord.total / 11)) + ")" : ""), "",
+     "How to pay:", st.bank_details || "Please reply to this email and we'll share our payment details.",
+     "Please use " + inv + " as the payment reference.", "",
+     st.invoice_footer || "", "",
+     (st.business_name || "Swamy Foods") + (st.business_phone ? "\n" + st.business_phone : "")
+   ];
+   return bits.filter(x => x !== null).join("\n");
+ }
+ async function openInvoice(ord){
+   const dlg = $("#invoiceDlg");
+   let st;
+   try { st = await ensureSettings(); } catch (e){ st = {}; }
+   const frame = h("iframe", { class:"invoice-frame", title:"Invoice preview", sandbox:"allow-same-origin allow-modals" });
+   frame.srcdoc = invoiceHTML(ord, st);
+   const inv = ord.invoice_no || ord.ref, to = ord.customer.email;
+   const subject = "Invoice " + inv + " from " + (st.business_name || "Swamy Foods");
+   const first = (ord.customer.name || "").split(/\s+/)[0] || "there";
+   const greeting = "Hi " + first + ",\n\nThank you for your order " + ord.ref + ". Your invoice " + inv + " is below.\n\n";
+   const mailto = "mailto:" + encodeURIComponent(to).replace(/%40/g, "@") + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(greeting);
+   const gmail = "https://mail.google.com/mail/?view=cm&fs=1&to=" + encodeURIComponent(to) + "&su=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(greeting);
+   const status = h("p", { class:"sub", id:"copyStatus", role:"status", "aria-live":"polite", style:"margin-top:10px;min-height:1.4em" });
+   // A mailto: link can only carry plain text. So we copy the designed invoice as rich text, and the
+   // customer's email then shows the colours and layout when you paste it into the message.
+   async function copyForEmail(){
+     status.textContent = "";
+     try {
+       if (navigator.clipboard && window.ClipboardItem){
+         await navigator.clipboard.write([new ClipboardItem({
+           "text/html": new Blob([invoiceBody(ord, st)], { type:"text/html" }),
+           "text/plain": new Blob([emailText(ord, st)], { type:"text/plain" }) })]);
+       } else {
+         const d = frame.contentDocument, sel = frame.contentWindow.getSelection(), r = d.createRange();
+         r.selectNodeContents(d.body); sel.removeAllRanges(); sel.addRange(r);
+         const ok = d.execCommand("copy"); sel.removeAllRanges();
+         if (!ok) throw new Error("copy refused");
+       }
+       status.textContent = "Copied. Now open your email below and paste into the message (Ctrl+V, or Cmd+V on a Mac).";
+     } catch (e){
+       status.textContent = "Couldn't copy automatically. Click inside the invoice above, press Ctrl+A then Ctrl+C, and paste it into your email.";
+     }
+   }
+   const foot = h("div", { class:"dlg-foot" },
+     h("button", { class:"btn", type:"button", id:"copyInvoice", onclick:copyForEmail }, "Copy invoice for email"),
+     h("a", { class:"btn alt", href:gmail, id:"gmailInvoice", target:"_blank", rel:"noopener" }, "Open in Gmail"),
+     h("a", { class:"btn alt", href:mailto, id:"mailInvoice" }, "Open in email app"),
+     h("button", { class:"btn alt", type:"button", id:"printInvoice", onclick:() => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e){ status.textContent = "Printing isn't available here. Open the page in Chrome or Safari."; } } }, "Print / save as PDF"),
+     h("span", { class:"grow" }),
+     h("button", { class:"btn alt", type:"button", onclick:() => closeView(dlg) }, "Close"));
+   dlgShow(dlg, "Invoice " + (ord.invoice_no || ""), h("div", null,
+     h("ol", { class:"sub", style:"margin:0 0 14px 18px;line-height:1.7" },
+       h("li", null, h("strong", null, "To email it:"), " press ", h("strong", null, "Copy invoice for email"), ", open Gmail or your email app (the address and subject are filled in), then paste into the message and send."),
+       h("li", null, h("strong", null, "To send a PDF:"), " press ", h("strong", null, "Print / save as PDF"), ", save it, and attach it to your email.")),
+     frame, status), foot);
+ }
+
+ /* ------------------------------ PRODUCTS ------------------------------ */
+ async function loadCatalog(){
+   state.catalog = await SB.rpc("admin_get_catalog", {});
+ }
+ async function productsView(){
+   main.replaceChildren(loading("Loading products…"));
+   try { await loadCatalog(); } catch (e){ main.replaceChildren(errBox(e.message)); return; }
+   drawProducts();
+ }
+ const CAT_TITLE = { spices:"Spice Varieties", appalam:"Appalam & Vadam Varieties" };
+ function drawProducts(){
+   if (state.tab !== "products") return;
+   const q = state.prodQ.trim().toLowerCase();
+   const list = (state.catalog || []).filter(p => !q || p.name.toLowerCase().includes(q));
+   const search = h("input", { type:"search", placeholder:"Search products", value:state.prodQ, "aria-label":"Search products" });
+   search.addEventListener("input", () => {
+     state.prodQ = search.value;
+     const pos = search.selectionStart;
+     drawProducts();
+     const again = $("#main input[type=search]");
+     if (again){ again.focus(); try { again.setSelectionRange(pos, pos); } catch (e){} }
+   });
+   const parts = [
+     h("h1", null, "Products & stock"),
+     h("p", { class:"lead" }, "Change prices and stock here and the shop updates straight away. Leave Stock blank for made-to-order items (always available). Enter 0 for out of stock."),
+     h("div", { class:"toolbar" }, search,
+       h("button", { class:"btn", type:"button", disabled:state.addingProduct, onclick:() => { state.addingProduct = true; drawProducts(); } }, "Add product"))
+   ];
+   if (state.addingProduct) parts.push(productCard({ id:null, name:"", category:"spices", note:"", image:"", sort_order:((state.catalog || []).length + 1), active:true,
+     variants:[{ id:null, weight:"", price:"", stock:null, active:true }] }, true));
+   ["spices","appalam"].forEach(cat => {
+     const items = list.filter(p => p.category === cat);
+     if (!items.length) return;
+     parts.push(h("h2", { class:"pgroup" }, CAT_TITLE[cat]));
+     items.forEach(p => parts.push(productCard(p, state.openIds.has(p.id))));
+   });
+   if (!list.length && !state.addingProduct) parts.push(h("div", { class:"panel empty" }, h("strong", null, "No products"), "Add your first product."));
+   main.replaceChildren(...parts);
+ }
+ function stockBadge(v){
+   if (v.stock === null || v.stock === undefined) return "stock —";
+   return v.stock === 0 ? "out of stock" : v.stock + " in stock";
+ }
+ function productCard(p, open){
+   const isNew = !p.id;
+   const err = h("div", { class:"form-error", role:"alert", hidden:true });
+   const name = txt("name", p.name, { maxlength:"120", required:true });
+   const cat = h("select", { name:"category" }, [["spices","Spice Varieties"],["appalam","Appalam & Vadam"]].map(o => h("option", { value:o[0], selected:o[0] === p.category }, o[1])));
+   const noteIn = txt("note", p.note || "", { maxlength:"200" });
+   const image = txt("image", p.image || "", { placeholder:"leave blank to use the product name", maxlength:"80" });
+   const sort = h("input", { type:"number", name:"sort_order", value:String(p.sort_order == null ? 0 : p.sort_order), step:"1" });
+   const active = h("input", { type:"checkbox", name:"active", checked:p.active !== false });
+   const vbody = h("tbody");
+   function addRow(v){
+     const tr = h("tr", { "data-id":v.id || "" },
+       h("td", { "data-l":"Size (weight)" }, txt("weight", v.weight, { maxlength:"40", placeholder:"200 gm", "aria-label":"Size" })),
+       h("td", { "data-l":"Price ($)" }, h("input", { type:"text", name:"price", inputmode:"decimal", value:v.price === "" || v.price == null ? "" : Number(v.price).toFixed(2), "aria-label":"Price", autocomplete:"off" })),
+       h("td", { "data-l":"Stock (blank = made to order)" }, h("input", { type:"text", name:"stock", inputmode:"numeric", value:v.stock === null || v.stock === undefined ? "" : String(v.stock), placeholder:"blank", "aria-label":"Stock", autocomplete:"off" })),
+       h("td", { "data-l":"For sale" }, h("label", { class:"check" }, h("input", { type:"checkbox", name:"vactive", checked:v.active !== false }), "Yes")),
+       h("td", null, h("button", { class:"link-btn", type:"button", onclick:() => { if (vbody.children.length > 1) tr.remove(); else toast("A product needs at least one size."); } }, "Remove")));
+     vbody.appendChild(tr);
+   }
+   p.variants.forEach(addRow);
+   function collect(){
+     const variants = [...vbody.children].map(tr => ({
+       id: tr.dataset.id || undefined,
+       weight: tr.querySelector("[name=weight]").value.trim(),
+       price: tr.querySelector("[name=price]").value.trim().replace(/^\$/, ""),
+       stock: tr.querySelector("[name=stock]").value.trim(),
+       active: tr.querySelector("[name=vactive]").checked
+     }));
+     return { id:p.id || undefined, name:name.value.trim(), category:cat.value, note:noteIn.value.trim(), image:image.value.trim(),
+              sort_order:sort.value.trim(), active:active.checked, variants };
+   }
+   function validate(d){
+     const rows = [...vbody.children];
+     const bad = (el, msg) => { el.setAttribute("aria-invalid", "true"); el.focus(); return msg; };
+     if (!d.name) return bad(name, "Please enter a product name.");
+     for (let i = 0; i < d.variants.length; i++){
+       const v = d.variants[i], tr = rows[i];
+       if (!v.weight) return bad(tr.querySelector("[name=weight]"), "Every size needs a weight, e.g. 200 gm.");
+       if (!/^[0-9]{1,6}(\.[0-9]{1,2})?$/.test(v.price)) return bad(tr.querySelector("[name=price]"), "Enter a valid price for " + v.weight + " (numbers only, e.g. 7.50).");
+       if (v.stock !== "" && !/^[0-9]{1,6}$/.test(v.stock)) return bad(tr.querySelector("[name=stock]"), "Stock for " + v.weight + " must be a whole number, or blank.");
+     }
+     const seen = new Map();
+     for (let i = 0; i < d.variants.length; i++){
+       const k = d.variants[i].weight.toLowerCase();
+       if (seen.has(k)){ rows[seen.get(k)].querySelector("[name=weight]").setAttribute("aria-invalid", "true"); return bad(rows[i].querySelector("[name=weight]"), "Two sizes have the same weight."); }
+       seen.set(k, i);
+     }
+     return "";
+   }
+   const saveBtn = h("button", { class:"btn", type:"button" }, isNew ? "Add product" : "Save product");
+   saveBtn.addEventListener("click", async () => {
+     err.hidden = true;
+     const d = collect(), bad = validate(d);
+     if (bad){ err.textContent = bad; err.hidden = false; return; }
+     saveBtn.disabled = true; saveBtn.classList.add("is-loading"); saveBtn.textContent = "Saving…";
+     try {
+       const r = await SB.rpc("admin_save_product", { p:d });
+       state.openIds.add(r.id);
+       state.addingProduct = false;
+       await loadCatalog();
+       drawProducts();
+       toast("Saved " + d.name + ".");
+     } catch (e){
+       saveBtn.disabled = false; saveBtn.classList.remove("is-loading"); saveBtn.textContent = isNew ? "Add product" : "Save product";
+       err.textContent = e.message; err.hidden = false;
+     }
+   });
+   const delBtn = isNew
+     ? h("button", { class:"btn alt", type:"button", onclick:() => { state.addingProduct = false; drawProducts(); } }, "Cancel")
+     : h("button", { class:"btn danger", type:"button", onclick:async () => {
+         if (!window.confirm("Delete " + p.name + " for good? Old orders keep their item lines. To just hide it from the shop, untick \"Show in shop\" instead.")) return;
+         try { await SB.rpc("admin_delete_product", { p_id:p.id }); state.openIds.delete(p.id); await loadCatalog(); drawProducts(); toast("Deleted."); }
+         catch (e){ err.textContent = e.message; err.hidden = false; }
+       } }, "Delete product");
+   const summary = h("summary", null,
+     h("span", { class:"pname" }, p.name || "New product"),
+     p.active === false ? h("span", { class:"badge off" }, "Hidden") : null,
+     h("span", { class:"psizes" }, p.variants.map(v => v.weight + " · " + fmtMoney(v.price) + " · " + stockBadge(v)).join("   |   ")));
+   const det = h("details", { class:"pcard" }, summary,
+     h("div", { class:"pbody" },
+       h("div", { class:"row3", style:"margin-top:12px" },
+         field("Product name", name),
+         field("Category", cat),
+         field("Order on page", sort)),
+       h("div", { class:"row2" },
+         field("Short note", noteIn, "optional"),
+         field("Photo file name", image, "optional")),
+       h("table", { class:"vtable" },
+         h("thead", null, h("tr", null, h("th", null, "Size"), h("th", null, "Price ($)"), h("th", null, "Stock (blank = made to order)"), h("th", null, "For sale"), h("th", null, ""))),
+         vbody),
+       h("button", { class:"btn alt sm", type:"button", onclick:() => addRow({ id:null, weight:"", price:"", stock:null, active:true }) }, "Add another size"),
+       h("div", { style:"margin-top:12px" }, h("label", { class:"check" }, active, "Show in shop")),
+       err,
+       h("div", { class:"actions" }, saveBtn, delBtn)));
+   if (open) det.open = true;
+   det.addEventListener("input", e => { if (e.target && e.target.removeAttribute) e.target.removeAttribute("aria-invalid"); });
+   det.addEventListener("toggle", () => { if (p.id){ if (det.open) state.openIds.add(p.id); else state.openIds.delete(p.id); } });
+   return det;
+ }
+
+ /* ------------------------------ SETTINGS ------------------------------ */
+ async function settingsView(){
+   main.replaceChildren(loading("Loading settings…"));
+   try { state.settings = await SB.rpc("admin_get_settings", {}); } catch (e){ main.replaceChildren(errBox(e.message)); return; }
+   const s = state.settings;
+   const err = h("div", { class:"form-error", role:"alert", hidden:true });
+   const ok = h("div", { class:"form-ok", role:"status", hidden:true });
+   const mode = v => h("label", { class:"radio" }, h("input", { type:"radio", name:"stock_mode", value:v[0], checked:(s.stock_mode || "on_submit") === v[0] }), h("div", null, h("b", null, v[1]), h("span", null, v[2])));
+   const form = h("form", { novalidate:true },
+     h("h2", null, "When should stock go down?"),
+     h("p", { class:"lead", style:"margin:6px 0 12px" }, "You can switch this at any time. Orders already in the system keep working correctly."),
+     mode(["on_submit", "When the customer sends the order", "Stock is held for the order straight away, so nobody can order what's gone. Cancelling puts it back. Best if you keep real stock counts."]),
+     mode(["on_confirm", "Only when I confirm the order", "Stock changes when you confirm or invoice. Customers can still order the last item, and you'll see a warning in the order if stock is short. Best for made-to-order items."]),
+     h("h2", { style:"margin-top:26px" }, "Invoice details"),
+     h("p", { class:"lead", style:"margin:6px 0 12px" }, "These appear on every invoice."),
+     h("div", { class:"row2" }, field("Business name", txt("business_name", s.business_name)), field("ABN", txt("abn", s.abn, { maxlength:"20" }), "optional")),
+     h("div", { class:"row2" }, field("Phone", txt("business_phone", s.business_phone)), field("Email", txt("business_email", s.business_email))),
+     field("Address", txt("business_address", s.business_address)),
+     h("div", { class:"field" }, h("label", { class:"check" }, h("input", { type:"checkbox", name:"gst_registered", checked:s.gst_registered === true }), "I'm registered for GST (shows \"Tax invoice\" and the GST amount)")),
+     field("Bank details for payment", h("textarea", { name:"bank_details", rows:"4", maxlength:"1000" }, s.bank_details || ""), "shown on invoices"),
+     h("div", { class:"row2" },
+       field("Invoice footer message", txt("invoice_footer", s.invoice_footer)),
+       field("Invoice number prefix", txt("invoice_prefix", s.invoice_prefix, { maxlength:"10" }), "e.g. SF-")),
+     err, ok,
+     h("button", { class:"btn", type:"submit" }, "Save settings"));
+   form.addEventListener("submit", async ev => {
+     ev.preventDefault();
+     err.hidden = true; ok.hidden = true;
+     const fd = new FormData(form), g = k => String(fd.get(k) || "");
+     const payload = {
+       stock_mode:g("stock_mode"), business_name:g("business_name").trim(), abn:g("abn").trim(),
+       business_phone:g("business_phone").trim(), business_email:g("business_email").trim(), business_address:g("business_address").trim(),
+       gst_registered:fd.get("gst_registered") === "on", bank_details:g("bank_details").trim(),
+       invoice_footer:g("invoice_footer").trim(), invoice_prefix:g("invoice_prefix").trim()
+     };
+     try { state.settings = await SB.rpc("admin_save_settings", { p:payload }); ok.textContent = "Settings saved."; ok.hidden = false; toast("Settings saved."); }
+     catch (e){ err.textContent = e.message; err.hidden = false; }
+   });
+   main.replaceChildren(h("h1", null, "Settings"), h("div", { class:"panel", style:"padding:22px;max-width:760px" }, form));
+ }
+
+ /* ------------------------------ go ------------------------------ */
+ SB.auth.onChange(sess => { if (!sess && SB.configured && $("#tabs") && !$("#tabs").hidden){ state.authed = false; state.view = null; showLogin("You've been logged out."); } });
+ setInterval(() => {
+   if (state.tab === "orders" && document.visibilityState === "visible" && SB.auth.getSession() &&
+       !state.view && !$("#tabs").hidden){
+     loadOrders(true).then(ok => { if (ok && !state.view) drawOrders(); });
+   }
+ }, 60000);
+ boot();
+})();
+</script>
+</body>
+</html>
+ 

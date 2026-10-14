@@ -154,6 +154,20 @@ declare
 
   pfx      text;
 
+  oid3     uuid;
+
+  oid4     uuid;
+
+  oid5     uuid;
+
+  oid6     uuid;
+
+  lid      text;
+
+  s0       integer;
+
+  ctr      integer;
+
   cust     jsonb := jsonb_build_object(
 
              'name','Test Buyer','email','buyer@example.com','phone','0400 000 000',
@@ -586,6 +600,208 @@ begin
   res := public.admin_set_order_status(oid1, 'cancelled');
 
   perform pg_temp.must_fail(format('select public.admin_issue_invoice(%L)', oid1) , 'cancelled');
+
+
+ 
+
+  ---------------------------------------------------------------- L. deleting orders
+
+  perform pg_temp.as_user(admin_id);
+
+  perform public.admin_save_settings('{"stock_mode":"on_submit"}'::jsonb);
+
+  perform public.admin_save_product(jsonb_build_object(
+
+    'id', pid, 'name','ZZ Selftest Product','category','spices','variants', jsonb_build_array(
+
+      jsonb_build_object('id', vid,  'weight','100 gm','price','10.00','stock','6'),
+
+      jsonb_build_object('id', vid2, 'weight','200 gm','price','18.50','stock',''))));
+
+  perform pg_temp.as_anon();
+
+  res := public.place_order(cust || '{"email":"del1@example.com"}', jsonb_build_array(jsonb_build_object('variant_id', vid, 'qty', 2)));
+
+  oid3 := (res ->> 'id')::uuid;
+
+  perform pg_temp.as_postgres();
+
+  perform pg_temp.ok((select stock_qty from public.product_variants where id = vid) = 4, 'delete tests: the order holds 2 (6 -> 4)');
+
+  perform pg_temp.as_anon();
+
+  perform pg_temp.must_fail(format('select public.admin_delete_order(%L, ''X'')', oid3), 'permission denied');
+
+  perform pg_temp.as_user(a_id);
+
+  perform pg_temp.must_fail(format('select public.admin_delete_order(%L, %L)', oid3, res ->> 'ref'), 'not allowed');
+
+  perform pg_temp.as_user(admin_id);
+
+  perform pg_temp.must_fail(format('select public.admin_delete_order(%L, ''SF-WRONG1'')', oid3), 'did not match');
+
+  perform pg_temp.must_fail(format('select public.admin_delete_order(%L, %L)', gen_random_uuid(), res ->> 'ref'), 'order not found');
+
+  perform pg_temp.as_postgres();
+
+  perform pg_temp.ok(exists (select 1 from public.orders where id = oid3), 'a refused delete leaves the order in place');
+
+  perform pg_temp.as_user(admin_id);
+
+  res2 := public.admin_delete_order(oid3, lower(res ->> 'ref'));
+
+  perform pg_temp.ok((res2 ->> 'stock_restored')::boolean = true, 'delete reports that stock was put back (a lower-case reference is accepted)');
+
+  perform pg_temp.as_postgres();
+
+  perform pg_temp.ok((select count(*) from public.orders where id = oid3) = 0 and (select count(*) from public.order_items where order_id = oid3) = 0, 'the order and its items are gone');
+
+  perform pg_temp.ok((select stock_qty from public.product_variants where id = vid) = 6, 'deleting an order that held stock puts it back (4 -> 6)');
+
+  perform pg_temp.ok((select count(*) from public.order_deletions where ref = res ->> 'ref') = 1, 'a small record of the deletion is kept');
+
+  perform pg_temp.as_anon();
+
+  perform pg_temp.must_fail(format('select public.track_order(%L, ''del1@example.com'')', res ->> 'ref'), 'could not find');
+
+
+ 
+
+  res := public.place_order(cust || '{"email":"del2@example.com"}', jsonb_build_array(jsonb_build_object('variant_id', vid, 'qty', 1)));
+
+  oid4 := (res ->> 'id')::uuid;
+
+  perform pg_temp.as_user(admin_id);
+
+  perform public.admin_set_order_status(oid4, 'cancelled');
+
+  perform pg_temp.as_postgres();
+
+  s0 := (select stock_qty from public.product_variants where id = vid);
+
+  perform pg_temp.as_user(admin_id);
+
+  res2 := public.admin_delete_order(oid4, res ->> 'ref');
+
+  perform pg_temp.ok((res2 ->> 'stock_restored')::boolean = false, 'a cancelled order holds no stock, so none is put back');
+
+  perform pg_temp.as_postgres();
+
+  perform pg_temp.ok((select stock_qty from public.product_variants where id = vid) = s0 and s0 = 6, 'stock is unchanged when a cancelled order is deleted');
+
+
+ 
+
+  perform pg_temp.as_anon();
+
+  res := public.place_order(cust || '{"email":"del3@example.com"}', jsonb_build_array(jsonb_build_object('variant_id', vid, 'qty', 1)));
+
+  oid5 := (res ->> 'id')::uuid;
+
+  perform pg_temp.as_user(admin_id);
+
+  perform public.admin_issue_invoice(oid5);
+
+  ctr := (public.admin_get_settings() ->> 'invoice_counter')::integer;
+
+  res2 := public.admin_delete_order(oid5, res ->> 'ref');
+
+  perform pg_temp.ok((res2 ->> 'invoice_no') is not null, 'deleting an invoiced order reports the invoice number it removed');
+
+  perform pg_temp.ok((public.admin_get_settings() ->> 'invoice_counter')::integer = ctr, 'invoice numbers are never reused (the counter does not go back)');
+
+  perform pg_temp.as_postgres();
+
+  perform pg_temp.ok((select count(*) from public.order_deletions where invoice_no = res2 ->> 'invoice_no') = 1, 'the kept record includes the invoice number');
+
+  perform pg_temp.ok((select stock_qty from public.product_variants where id = vid) = 6, 'stock is back to 6 after deleting an invoiced order');
+
+  perform pg_temp.as_user(admin_id);
+
+  perform public.admin_save_settings('{"stock_mode":"on_confirm"}'::jsonb);
+
+
+ 
+
+  ---------------------------------------------------------------- M. adding and removing products on an order
+
+  perform pg_temp.as_user(admin_id);
+
+  perform public.admin_save_settings('{"stock_mode":"on_submit"}'::jsonb);
+
+  perform pg_temp.as_anon();
+
+  res := public.place_order(cust || '{"email":"edit1@example.com"}', jsonb_build_array(jsonb_build_object('variant_id', vid, 'qty', 1)));
+
+  oid6 := (res ->> 'id')::uuid;
+
+  perform pg_temp.as_user(admin_id);
+
+  res2 := public.admin_update_order(oid6, jsonb_build_array(jsonb_build_object('variant_id', vid2, 'qty', 2)), 0, 0, null);
+
+  perform pg_temp.ok(jsonb_array_length(res2 -> 'items') = 2, 'adding a product creates a new line');
+
+  perform pg_temp.ok((res2 ->> 'subtotal')::numeric = 47.00, 'subtotal is now 10.00 + 2 x 18.50 = 47.00');
+
+  res2 := public.admin_update_order(oid6, jsonb_build_array(jsonb_build_object('variant_id', vid, 'qty', 2)), 0, 0, null);
+
+  perform pg_temp.ok(jsonb_array_length(res2 -> 'items') = 2, 'adding a size that is already on the order merges into the same line');
+
+  perform pg_temp.ok((select qty from public.order_items where order_id = oid6 and variant_id = vid) = 3, 'the merged line now has quantity 3');
+
+  perform pg_temp.as_postgres();
+
+  perform pg_temp.ok((select stock_qty from public.product_variants where id = vid) = 3, 'stock followed the added quantity (5 -> 3)');
+
+  perform pg_temp.as_user(admin_id);
+
+  perform pg_temp.must_fail(format('select public.admin_update_order(%L, %L::jsonb, 0, 0, null)', oid6,
+
+            jsonb_build_array(jsonb_build_object('variant_id', vid, 'qty', 9))), 'not enough stock');
+
+  perform pg_temp.must_fail(format('select public.admin_update_order(%L, %L::jsonb, 0, 0, null)', oid6,
+
+            jsonb_build_array(jsonb_build_object('variant_id', gen_random_uuid(), 'qty', 1))), 'no longer exists');
+
+  perform pg_temp.must_fail(format('select public.admin_update_order(%L, %L::jsonb, 0, 0, null)', oid6,
+
+            jsonb_build_array(jsonb_build_object('variant_id', vid2, 'qty', 0))), 'invalid item');
+
+  perform pg_temp.as_postgres();
+
+  perform pg_temp.ok((select stock_qty from public.product_variants where id = vid) = 3, 'refused additions changed nothing');
+
+  perform pg_temp.as_user(a_id);
+
+  perform pg_temp.must_fail(format('select public.admin_update_order(%L, %L::jsonb, 0, 0, null)', oid6,
+
+            jsonb_build_array(jsonb_build_object('variant_id', vid2, 'qty', 1))), 'not allowed');
+
+  perform pg_temp.as_user(admin_id);
+
+  res2 := public.admin_get_order(oid6);
+
+  lid := (select e ->> 'id' from jsonb_array_elements(res2 -> 'items') e where e ->> 'weight' = '100 gm');
+
+  res2 := public.admin_update_order(oid6, jsonb_build_array(jsonb_build_object('id', lid, 'qty', 0)), 0, 0, null);
+
+  perform pg_temp.ok(jsonb_array_length(res2 -> 'items') = 1, 'setting a line to 0 removes it');
+
+  perform pg_temp.as_postgres();
+
+  perform pg_temp.ok((select stock_qty from public.product_variants where id = vid) = 6, 'removing a line puts its stock back (3 -> 6)');
+
+  perform pg_temp.as_user(admin_id);
+
+  res2 := public.admin_get_order(oid6);
+
+  lid := (res2 -> 'items' -> 0 ->> 'id');
+
+  perform pg_temp.must_fail(format('select public.admin_update_order(%L, %L::jsonb, 0, 0, null)', oid6,
+
+            jsonb_build_array(jsonb_build_object('id', lid, 'qty', 0))), 'at least one item');
+
+  perform public.admin_save_settings('{"stock_mode":"on_confirm"}'::jsonb);
 
 
  

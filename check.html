@@ -400,9 +400,13 @@
 
       var admLocked = adm.status === 401 || adm.status === 403;
 
+      var delFn = await call(base, key, "/rest/v1/rpc/admin_delete_order", "POST", { p_order_id: "00000000-0000-0000-0000-000000000000", p_ref: "X" });
+
       if (bad.length) results.push(r4.set("bad", "These didn't respond correctly: " + bad.join("; ") + ".", "Re-run the whole schema.sql file (it's safe to run again), then run: notify pgrst, 'reload schema';"));
 
       else if (adm.status === 404) results.push(r4.set("bad", "The admin functions are missing.", "Re-run the whole schema.sql file."));
+
+      else if (delFn.status === 404) results.push(r4.set("bad", "The delete-order function is missing, so your database is one update behind. Deleting an order in the admin page would fail.", "Run the whole latest supabase/schema.sql again in the Supabase SQL Editor (it is safe to run again), then run: notify pgrst, 'reload schema';"));
 
       else if (!admLocked) results.push(r4.set("bad", "Admin functions answered a visitor who isn't logged in (" + adm.status + ").", "Re-run schema.sql so the permissions section is applied, then check again."));
 

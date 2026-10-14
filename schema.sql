@@ -238,6 +238,33 @@ create table if not exists public.order_items (
 create index if not exists order_items_order_idx on public.order_items (order_id);
 
 
+ 
+
+-- When an admin deletes an order, one small line is kept here (no customer details), so a gap in the
+
+-- invoice numbers can always be explained later.
+
+create table if not exists public.order_deletions (
+
+  id           uuid primary key default gen_random_uuid(),
+
+  ref          text not null,
+
+  invoice_no   text,
+
+  status       text,
+
+  total        numeric(10,2),
+
+  items_count  integer,
+
+  deleted_by   uuid,
+
+  deleted_at   timestamptz not null default now()
+
+);
+
+
 
  
 
@@ -271,9 +298,16 @@ alter table public.order_items       enable row level security;
 
  
 
+alter table public.order_deletions   enable row level security;
+
+
+ 
+
 revoke all on public.products, public.product_variants, public.profiles,
 
-              public.admins, public.settings, public.orders, public.order_items
+              public.admins, public.settings, public.orders, public.order_items,
+
+              public.order_deletions
 
   from anon, authenticated;
 
@@ -1340,9 +1374,11 @@ end $$;
 
  
 
--- Change quantities (0 removes a line), shipping, discount and your note.
+-- Change quantities (0 removes a line), ADD products, and set shipping, discount and your note.
 
--- p_items: [{id: <order line id>, qty: n}, ...]
+-- p_items: [{id: <order line id>, qty: n}, ...]   change or remove (0) an existing line
+
+--          [{variant_id: <size id>, qty: n}, ...]   add a product (merges into the line if it is already on the order)
 
 create or replace function public.admin_update_order(
 
@@ -1367,6 +1403,8 @@ declare
   v_new   integer;
 
   v_delta integer;
+
+  nv      record;
 
   v_sub   numeric(10,2);
 
@@ -1415,11 +1453,107 @@ begin
 
   for r in
 
-    select e ->> 'id' as id_txt, e ->> 'qty' as qty_txt
+    select e ->> 'id' as id_txt, e ->> 'variant_id' as vid_txt, e ->> 'qty' as qty_txt
 
       from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) e
 
   loop
+
+    -- ---- ADD a product to the order ----
+
+    if coalesce(r.id_txt, '') = '' and coalesce(r.vid_txt, '') <> '' then
+
+      if r.vid_txt !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+
+         or coalesce(r.qty_txt, '') !~ '^[0-9]{1,3}$'
+
+         or (case when coalesce(r.qty_txt, '') ~ '^[0-9]{1,3}$' then r.qty_txt::integer else 0 end) < 1 then
+
+        raise exception 'Invalid item quantity.';
+
+      end if;
+
+      v_new := r.qty_txt::integer;
+
+
+ 
+
+      select v.id, v.weight, v.price, v.stock_qty, p.name as pname
+
+        into nv
+
+        from public.product_variants v
+
+        join public.products p on p.id = v.product_id
+
+       where v.id = r.vid_txt::uuid
+
+         for update of v;
+
+      if not found then
+
+        raise exception 'That product or size no longer exists.';
+
+      end if;
+
+
+ 
+
+      -- if this order already holds stock, the new quantity must come off the shelf too
+
+      if o.stock_deducted and nv.stock_qty is not null then
+
+        if v_new > nv.stock_qty then
+
+          raise exception 'Not enough stock for % (%): % more needed but only % in stock.',
+
+            nv.pname, nv.weight, v_new, nv.stock_qty;
+
+        end if;
+
+        update public.product_variants set stock_qty = stock_qty - v_new where id = nv.id;
+
+      end if;
+
+
+ 
+
+      select * into it from public.order_items where order_id = p_order_id and variant_id = nv.id;
+
+      if found then
+
+        -- already on the order: add to that line (it keeps the price the customer was shown)
+
+        update public.order_items
+
+           set qty = it.qty + v_new, line_total = round(unit_price * (it.qty + v_new), 2)
+
+         where id = it.id;
+
+      else
+
+        insert into public.order_items
+
+          (order_id, line_no, variant_id, product_name, weight, unit_price, qty, line_total)
+
+        values
+
+          (p_order_id,
+
+           coalesce((select max(i.line_no) from public.order_items i where i.order_id = p_order_id), 0) + 1,
+
+           nv.id, nv.pname, nv.weight, nv.price, v_new, round(nv.price * v_new, 2));
+
+      end if;
+
+      continue;
+
+    end if;
+
+
+ 
+
+    -- ---- change or remove an existing line ----
 
     if coalesce(r.id_txt, '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
 
@@ -1637,6 +1771,79 @@ begin
  
 
   return public._order_json(p_order_id, true);
+
+end $$;
+
+
+ 
+
+-- Permanently removes an order (its items go with it).  p_ref must match the order, as a safety check.
+
+-- If the order is holding stock, the stock goes back on the shelf first.
+
+create or replace function public.admin_delete_order(p_order_id uuid, p_ref text)
+
+returns jsonb
+
+language plpgsql security definer set search_path = public
+
+as $$
+
+declare
+
+  o          public.orders%rowtype;
+
+  v_items    integer;
+
+  v_restored boolean := false;
+
+begin
+
+  perform public._require_admin();
+
+  select * into o from public.orders where id = p_order_id for update;
+
+  if not found then
+
+    raise exception 'Order not found.';
+
+  end if;
+
+  if upper(btrim(coalesce(p_ref, ''))) <> o.ref then
+
+    raise exception 'The order reference did not match. Nothing was deleted.';
+
+  end if;
+
+
+ 
+
+  select coalesce(sum(qty), 0) into v_items from public.order_items where order_id = o.id;
+
+  if o.stock_deducted then
+
+    perform public._restore_stock(o.id);
+
+    v_restored := true;
+
+  end if;
+
+
+ 
+
+  insert into public.order_deletions (ref, invoice_no, status, total, items_count, deleted_by)
+
+  values (o.ref, o.invoice_no, o.status, o.total, v_items, auth.uid());
+
+
+ 
+
+  delete from public.orders where id = o.id;      -- order_items are removed with it
+
+
+ 
+
+  return jsonb_build_object('ref', o.ref, 'invoice_no', o.invoice_no, 'stock_restored', v_restored);
 
 end $$;
 
@@ -2083,6 +2290,8 @@ grant execute on function public.admin_set_order_status(uuid, text) to authentic
 grant execute on function public.admin_update_order(uuid, jsonb, numeric, numeric, text) to authenticated;
 
 grant execute on function public.admin_issue_invoice(uuid)     to authenticated;
+
+grant execute on function public.admin_delete_order(uuid, text) to authenticated;
 
 grant execute on function public.admin_get_settings()          to authenticated;
 

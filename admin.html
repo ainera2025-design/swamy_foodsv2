@@ -24,7 +24,7 @@
  }
  *,*::before,*::after{ box-sizing:border-box; }
  *{ margin:0; }
- html{ -webkit-text-size-adjust:100%; }
+ html{ -webkit-text-size-adjust:100%; scroll-padding-top:130px; scroll-padding-bottom:210px; }  /* keep room clear of the sticky header and the bottom action bar when the page scrolls to a control */
  body{ font:16px/1.55 var(--sans); background:var(--bg); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased; }
  a{ color:var(--brand); text-underline-offset:3px; }
  :focus-visible{ outline:2px solid var(--brand); outline-offset:2px; }
@@ -78,7 +78,7 @@
  .chip b{ font-weight:600; margin-left:6px; opacity:.8; }
 
  .panel{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); }
- .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+ .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; position:relative; }   /* position:relative keeps hidden (screen-reader) text inside the scroll area */
  table.tbl{ width:100%; border-collapse:collapse; font-size:.9375rem; }
  .tbl th,.tbl td{ padding:14px 16px; text-align:left; border-bottom:1px solid var(--line); vertical-align:middle; }
  .tbl th{ font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2); font-weight:600; background:#FBF8F2; white-space:nowrap; }
@@ -138,6 +138,30 @@
  .invoice-frame{ width:100%; height:68vh; min-height:420px; border:1px solid var(--line); border-radius:var(--r); background:#fff; }
  @media (max-width:960px){ .order-layout{ grid-template-columns:minmax(0,1fr); } .order-side{ order:-1; } }
  .order-main{ min-width:0; }
+
+ .danger-zone{ margin-top:36px; padding:20px; border:1px solid #D2A39B; border-radius:var(--r); background:#FFF8F7; }
+ .danger-zone h2{ font-size:1.0625rem; color:var(--err); }
+ .confirm-panel{ margin-top:6px; padding:18px 20px; background:#fff; border:1px solid var(--err); border-radius:var(--r); scroll-margin-bottom:120px; }
+ .confirm-panel h3{ font:600 1.125rem var(--serif); margin-bottom:10px; }
+ .confirm-list{ margin:0 0 16px 20px; font-size:.9375rem; line-height:1.6; }
+ .confirm-list li{ margin-bottom:8px; }
+ .confirm-list li.warn{ color:#6f2017; }
+
+ .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+ .items tr.removed td{ background:#FBF3F1; color:var(--ink-2); }
+ .items tr.removed td:nth-child(-n+3){ text-decoration:line-through; }
+ .add-line{ margin-top:20px; padding:18px 20px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); }
+ .add-line h3{ font:600 1.0625rem var(--serif); margin-bottom:14px; }
+ .add-grid{ display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,2.4fr) 84px auto; gap:0 12px; align-items:end; }
+ .add-grid select{ font-size:.875rem; }
+ .add-grid .field{ margin-bottom:0; }
+ .add-btn-cell .btn{ width:100%; }
+ @media (max-width:760px){ .add-grid{ grid-template-columns:1fr 1fr; gap:14px; } .add-grid .field:nth-child(-n+2){ grid-column:1 / -1; } .add-btn-cell .btn{ width:100%; } }
+
+ .pw{ position:relative; }
+ .pw input{ padding-right:78px; }
+ .pw-toggle{ position:absolute; right:6px; top:50%; transform:translateY(-50%); min-height:34px; padding:0 12px; background:none; border:0; border-radius:var(--r); color:var(--brand); font:600 .875rem var(--sans); cursor:pointer; }
+ .pw-toggle:hover{ background:var(--tint); }
 
  /* products and settings */
  .pgroup{ margin:32px 0 10px; font:600 1.25rem var(--serif); padding-bottom:10px; border-bottom:1px solid var(--ink); }
@@ -226,7 +250,7 @@
  const STATUS_ORDER = ["submitted","confirmed","invoiced","paid","shipped","cancelled"];
  const EDITABLE = ["submitted","confirmed","invoiced"];
 
- const state = { view:null, curOrder:null, authed:false, tab:"orders", orders:null, filter:"all", q:"", catalog:null, settings:null, openIds:new Set(), addingProduct:false, prodQ:"" };
+ const state = { flash:"", view:null, curOrder:null, authed:false, tab:"orders", orders:null, filter:"all", q:"", catalog:null, settings:null, openIds:new Set(), addingProduct:false, prodQ:"" };
 
  /* ------------------------------ helpers ------------------------------ */
  let toastTimer = null;
@@ -238,11 +262,11 @@
  }
  const loading = text => h("div", { class:"loading-block", role:"status" },
    h("span", { class:"spinner", "aria-hidden":"true" }), text || "Loading…");
- function fieldE(label, input, name){
+ function fieldE(label, input, name, wrap){
    const holder = h("p", { class:"field-error", id:"err-" + name, hidden:true });
    input.setAttribute("aria-describedby", "err-" + name);
    input.addEventListener("input", () => { input.removeAttribute("aria-invalid"); holder.hidden = true; });
-   return h("div", { class:"field" }, tie(h("label", null, label), input), input, holder);
+   return h("div", { class:"field" }, tie(h("label", null, label), input), wrap || input, holder);
  }
  function markErr(input, msg){
    input.setAttribute("aria-invalid", "true");
@@ -308,7 +332,17 @@
    const btn = h("button", { class:"btn block", type:"submit" }, "Log in");
    const emailIn = h("input", { type:"email", name:"email", autocomplete:"username" });
    const pwIn = h("input", { type:"password", name:"password", autocomplete:"current-password" });
-   const form = h("form", { novalidate:true }, fieldE("Email", emailIn, "email"), fieldE("Password", pwIn, "password"), err, btn);
+   const pwToggle = h("button", { class:"pw-toggle", type:"button", "aria-pressed":"false", "aria-label":"Show password" }, "Show");
+   pwToggle.addEventListener("click", () => {
+     const show = pwIn.type === "password";
+     pwIn.type = show ? "text" : "password";
+     pwToggle.textContent = show ? "Hide" : "Show";
+     pwToggle.setAttribute("aria-pressed", String(show));
+     pwToggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
+     pwIn.focus();
+   });
+   const pwWrap = h("div", { class:"pw" }, pwIn, pwToggle);
+   const form = h("form", { novalidate:true }, fieldE("Email", emailIn, "email"), fieldE("Password", pwIn, "password", pwWrap), err, btn);
    let working = false;
    form.addEventListener("submit", async ev => {
      ev.preventDefault();
@@ -397,6 +431,7 @@
  }
  function drawOrders(){
    if (state.tab !== "orders" || state.view) return;
+   const flashMsg = state.flash; state.flash = "";
    const all = state.orders || [];
    const counts = { all:all.length };
    STATUS_ORDER.forEach(s => { counts[s] = all.filter(o => o.status === s).length; });
@@ -442,6 +477,7 @@
    }
    main.replaceChildren(
      h("h1", null, "Orders"),
+     h("div", { class: flashMsg ? "form-ok" : "", role:"status", hidden: !flashMsg, style:"margin:0 0 16px" }, flashMsg),
      h("p", { class:"lead" }, "Open an order to check stock, adjust it, add delivery and send the invoice."),
      h("div", { class:"toolbar" }, search,
        h("button", { class:"btn alt sm", type:"button", onclick:async () => { await loadOrders(); drawOrders(); toast("Orders refreshed."); } }, "Refresh")),
@@ -458,7 +494,7 @@
    const dlg = $("#orderDlg");
    dlgShow(dlg, "Order", loading("Loading order…"));
    try {
-     const [ord] = await Promise.all([SB.rpc("admin_get_order", { p_id:id }), ensureSettings().catch(() => null)]);
+     const [ord] = await Promise.all([SB.rpc("admin_get_order", { p_id:id }), ensureSettings().catch(() => null), loadCatalog().catch(() => null)]);
      drawOrder(ord);
    } catch (e){
      dlgShow(dlg, "Order", errBox(e.message));
@@ -479,16 +515,28 @@
    const qtyIn = new Map();
    const stockCell = new Map();
    const lineCell = new Map();
+   const rowEl = new Map();
+   const rmBtn = new Map();
+   const lineMsg = h("div", { class:"form-error", role:"alert", hidden:true, style:"margin-top:12px" });
    const itemsBody = h("tbody", null, ord.items.map(i => {
      const input = h("input", { type:"number", min:"0", max:"999", step:"1", value:String(i.qty), disabled:!editable,
                                 "aria-label":"Quantity of " + i.name + " " + i.weight });
      qtyIn.set(i.id, input);
      const sc = h("td"); stockCell.set(i.id, sc);
      const lc = h("td", { class:"num" }); lineCell.set(i.id, lc);
+     const rm = h("button", { class:"link-btn", type:"button", disabled:!editable }, "Remove");
+     rmBtn.set(i.id, rm);
      input.addEventListener("input", recalc);
-     return h("tr", null,
+     rm.addEventListener("click", () => {
+       if (input.value.trim() === "0") input.value = input.dataset.prev || String(i.qty);       // Undo
+       else { input.dataset.prev = input.value; input.value = "0"; }                          // Remove (applied when you press Save)
+       recalc();
+     });
+     const tr = h("tr", null,
        h("td", null, i.name), h("td", null, i.weight), h("td", { class:"num" }, fmtMoney(i.unit_price)),
-       h("td", null, input), sc, lc);
+       h("td", null, input), sc, lc, h("td", { class:"num" }, rm));
+     rowEl.set(i.id, tr);
+     return tr;
    }));
 
    /* ---- fees + note ---- */
@@ -500,7 +548,7 @@
    const totalsBox = h("div", { class:"totals" });
    const stockMsg = h("div", { class:"note-box" });
 
-   function readDraft(){
+   function readDraft(allowEmpty){
      const items = [];
      for (const i of ord.items){
        const v = qtyIn.get(i.id).value.trim();
@@ -511,6 +559,7 @@
      const d = disc.value.trim() === "" ? "0" : disc.value.trim();
      if (!/^[0-9]{1,4}(\.[0-9]{1,2})?$/.test(s)) return { error:"Delivery must be an amount like 15 or 15.50." };
      if (!/^[0-9]{1,6}(\.[0-9]{1,2})?$/.test(d)) return { error:"Discount must be an amount like 5 or 5.50." };
+     if (!allowEmpty && items.length && items.every(x => x.qty === 0)) return { error:"An order needs at least one item. To swap a product, add the new one below (that saves both changes together). To get rid of the whole order, use Cancel order, or Delete this order further down." };
      return { items, shipping:Number(s), discount:Number(d), note:note.value };
    }
    function isDirty(){
@@ -523,6 +572,13 @@
    function recalc(){
      const d = readDraft();
      let sub = 0, anyShort = false;
+     ord.items.forEach(i => {
+       const zero = qtyIn.get(i.id).value.trim() === "0", b = rmBtn.get(i.id);
+       rowEl.get(i.id).classList.toggle("removed", zero);
+       b.textContent = zero ? "Undo" : "Remove";
+       b.setAttribute("aria-label", (zero ? "Undo removing " : "Remove ") + i.name + " (" + i.weight + ")" + (zero ? "" : " from this order"));
+     });
+     lineMsg.hidden = !d.error; lineMsg.textContent = d.error || "";
      ord.items.forEach(i => {
        const q = d.error ? i.qty : d.items.find(x => x.id === i.id).qty;
        lineCell.get(i.id).textContent = fmtMoney(num(i.unit_price * q));
@@ -550,7 +606,7 @@
      parcel.textContent = "Parcel: " + nItems + (nItems === 1 ? " item" : " items") + (wt ? " · about " + wt.text : " · weight not known") +
                           " · to " + c.suburb + " " + c.state + " " + c.postcode + ". Delivery depends on quantity and weight.";
      stockMsg.hidden = !(editable && anyShort);
-     stockMsg.textContent = "Some items are short on stock. Lower the quantity (or set it to 0 to remove the line), or update stock in the Products tab first.";
+     stockMsg.textContent = "Some items are short on stock. Lower the quantity, remove the line, or update stock in the Products tab first.";
      saveBtn.disabled = !editable || !isDirty() || !!d.error;
      if (d.error && editable) saveBtn.title = d.error; else saveBtn.removeAttribute("title");
    }
@@ -629,15 +685,114 @@
        h("p", { style:"white-space:pre-line" }, [c.address_line1, c.address_line2, c.suburb + " " + c.state + " " + c.postcode].filter(Boolean).join("\n")),
        h("button", { class:"link-btn", type:"button", style:"margin-top:8px", onclick:() => copyText(addressText, "Address copied.") }, "Copy name, address and phone")),
      ord.customer_note ? h("div", { class:"note-box" }, h("strong", null, "Customer note: "), ord.customer_note) : null);
+   // ---- delete this order: a warning panel on the page (no pop-up), with extra care for invoiced orders
+   const itemCount = ord.items.reduce((a, i) => a + i.qty, 0);
+   const itemsWord = itemCount + (itemCount === 1 ? " item" : " items");
+   const strong = !!ord.invoice_no || ord.status === "paid" || ord.status === "shipped";   // these must be confirmed by typing the reference
+   const typed = h("input", { type:"text", id:"deleteTyped", autocomplete:"off", spellcheck:"false" });
+   const goBtn = h("button", { class:"btn danger", type:"button", id:"deleteGo", disabled:strong }, "Yes, delete order " + ord.ref);
+   const keepBtn = h("button", { class:"btn alt", type:"button", id:"deleteKeep" }, "Keep this order");
+   const startBtn = h("button", { class:"btn danger", type:"button", id:"deleteStart", "aria-expanded":"false", "aria-controls":"deleteConfirm" }, "Delete order…");
+   const panel = h("div", { class:"confirm-panel", id:"deleteConfirm", role:"group", "aria-labelledby":"deleteQ", hidden:true },
+     h("h3", { id:"deleteQ" }, "Delete order " + ord.ref + "?"),
+     h("ul", { class:"confirm-list" },
+       h("li", null, "This removes the order, its " + itemsWord + " and " + c.name + "'s delivery details from your system. The customer won't be able to track it any more."),
+       h("li", null, ord.stock_deducted ? "The " + itemsWord + " set aside for this order will go back on the shelf." : "No stock is held for this order, so your stock won't change."),
+       ord.invoice_no ? h("li", { class:"warn" }, "This order has invoice " + ord.invoice_no + ". Deleting it leaves a gap in your invoice numbers, and tax records generally need to be kept for 5 years. A small record (reference, invoice number, total and date) is kept. Cancelling the order instead keeps everything.") : null),
+     strong ? field("Type the order reference (" + ord.ref + ") to confirm", typed) : null,
+     h("div", { class:"actions" }, goBtn, keepBtn));
+   const matches = () => typed.value.trim().toUpperCase() === ord.ref;
+   startBtn.addEventListener("click", () => {
+     panel.hidden = false; startBtn.hidden = true; startBtn.setAttribute("aria-expanded", "true");
+     panel.scrollIntoView({ block:"nearest" }); (strong ? typed : goBtn).focus();
+   });
+   keepBtn.addEventListener("click", () => {
+     panel.hidden = true; typed.value = ""; goBtn.disabled = strong; startBtn.hidden = false;
+     startBtn.setAttribute("aria-expanded", "false"); err.hidden = true; startBtn.focus();
+   });
+   typed.addEventListener("input", () => { goBtn.disabled = !matches(); });
+   goBtn.addEventListener("click", async () => {
+     if (strong && !matches()) return;
+     err.hidden = true; goBtn.disabled = true; keepBtn.disabled = true; goBtn.classList.add("is-loading"); goBtn.textContent = "Deleting…";
+     try {
+       const r = await SB.rpc("admin_delete_order", { p_order_id:ord.id, p_ref:ord.ref });
+       state.flash = "Order " + ord.ref + " was deleted." + (r && r.stock_restored ? " The items it was holding went back on the shelf." : "");
+       state.orders = null; state.view = null; state.curOrder = null;
+       go("#/orders");
+     } catch (e) {
+       goBtn.classList.remove("is-loading"); goBtn.textContent = "Yes, delete order " + ord.ref; keepBtn.disabled = false; goBtn.disabled = strong && !matches();
+       showErr(/could not find the function|PGRST202/i.test(e.message)
+         ? "Deleting orders needs a small database update. Run the latest schema.sql in Supabase (setup step 2), then try again."
+         : e.message);
+     }
+   });
+   const delZone = h("section", { class:"danger-zone", "aria-labelledby":"delH" },
+     h("h2", { id:"delH" }, "Delete this order"),
+     h("p", { class:"sub", style:"margin:6px 0 14px" }, "Removes the order for good. To just stop it and keep the record, use Cancel order instead."),
+     startBtn, panel);
+   // ---- messages and the "Add a product" section (an addition is saved straight away, together with any edits already typed)
+   const noteTxt = state.orderNote || ""; state.orderNote = "";
+   const noteEl = h("div", { class: noteTxt ? "form-ok" : "", role:"status", hidden:!noteTxt, style:"margin:0 0 14px" }, noteTxt);
+   let addPanel = null;
+   if (editable) {
+     const catalog = Array.isArray(state.catalog) ? state.catalog : [];
+     const stockTxt = v => (v.stock === null || v.stock === undefined ? "made to order" : v.stock === 0 ? "out of stock" : v.stock + " in stock");
+     const productSel = h("select", { id:"addProduct" }, h("option", { value:"" }, "Choose a product…"));
+     const CATN = { spices:"Spice varieties", appalam:"Appalam & vadam" };
+     ["spices", "appalam"].forEach(cat => {
+       const group = h("optgroup", { label:CATN[cat] });
+       catalog.filter(p => p.category === cat).forEach(p => group.appendChild(h("option", { value:p.id }, p.name + (p.active ? "" : " (hidden in shop)"))));
+       if (group.children.length) productSel.appendChild(group);
+     });
+     const sizeSel = h("select", { id:"addSize", disabled:true }, h("option", { value:"" }, "Choose a size…"));
+     const qtyAdd = h("input", { type:"number", id:"addQty", min:"1", max:"999", step:"1", value:"1" });
+     const addBtn = h("button", { class:"btn", type:"button", id:"addGo" }, "Add to order");
+     productSel.addEventListener("change", () => {
+       const p = catalog.find(x => x.id === productSel.value);
+       sizeSel.replaceChildren(h("option", { value:"" }, "Choose a size…"));
+       (p ? p.variants : []).forEach(v => sizeSel.appendChild(h("option", { value:v.id }, v.weight + " · " + fmtMoney(v.price) + " · " + stockTxt(v) + (v.active ? "" : " · hidden in shop"))));
+       sizeSel.disabled = !p;
+       if (p && p.variants.length === 1) sizeSel.value = p.variants[0].id;
+     });
+     addBtn.addEventListener("click", async () => {
+       err.hidden = true;
+       const d = readDraft(true);                // the addition itself gives the order its item, so removing the old line is allowed here
+       if (d.error) { showErr(d.error); return; }
+       const vid = sizeSel.value, q = qtyAdd.value.trim();
+       if (!productSel.value) { showErr("Choose a product to add."); productSel.focus(); return; }
+       if (!vid) { showErr("Choose a size to add."); sizeSel.focus(); return; }
+       if (!/^[0-9]{1,3}$/.test(q) || Number(q) < 1) { showErr("Enter how many to add (1 or more)."); qtyAdd.focus(); return; }
+       const picked = catalog.find(p => p.id === productSel.value);
+       const size = picked && picked.variants.find(x => x.id === vid);
+       addBtn.disabled = true; addBtn.classList.add("is-loading"); addBtn.textContent = "Adding…";
+       try {
+         const next = await SB.rpc("admin_update_order", { p_order_id:ord.id, p_items:d.items.concat([{ variant_id:vid, qty:Number(q) }]), p_shipping:d.shipping, p_discount:d.discount, p_note:d.note });
+         state.orderNote = "Added " + q + " × " + (picked ? picked.name + " (" + (size ? size.weight : "") + ")" : "the product") + " to this order.";
+         loadCatalog().catch(() => null);          // stock figures just moved
+         drawOrder(next);
+         loadOrders(true);
+       } catch (e) {
+         addBtn.disabled = false; addBtn.classList.remove("is-loading"); addBtn.textContent = "Add to order";
+         showErr(e.message);
+       }
+     });
+     addPanel = h("section", { class:"add-line", "aria-labelledby":"addH" },
+       h("h3", { id:"addH" }, "Add a product to this order"),
+       h("div", { class:"add-grid" }, field("Product", productSel), field("Size", sizeSel), field("Quantity", qtyAdd), h("div", { class:"add-btn-cell" }, addBtn)),
+       catalog.length ? null : h("p", { class:"sub", style:"margin-top:8px" }, "The product list couldn't be loaded. Reload the page and try again."));
+   }
    const mainCol = h("div", { class:"order-main" },
      h("p", { class:"sub", style:"margin-bottom:12px" },
        ord.stock_deducted ? "Stock for this order is already set aside (taken off the shelf count)."
                           : "Stock has not been taken off yet. It will come off when you confirm or invoice this order."),
+     noteEl,
      stockMsg,
      h("div", { class:"panel table-scroll" }, h("table", { class:"tbl items" },
        h("thead", null, h("tr", null, h("th", null, "Item"), h("th", null, "Size"), h("th", { class:"num" }, "Price"),
-                          h("th", null, "Qty"), h("th", null, "Stock now"), h("th", { class:"num" }, "Amount"))),
+                          h("th", null, "Qty"), h("th", null, "Stock now"), h("th", { class:"num" }, "Amount"), h("th", { class:"num" }, h("span", { class:"sr-only" }, "Remove")))),
        itemsBody)),
+     lineMsg,
+     addPanel,
      h("div", { class:"grid2", style:"margin-top:24px" },
        h("div", null,
          field("Delivery", h("div", { class:"money-in" }, "$", ship)),
@@ -648,7 +803,8 @@
      err,
      editable ? null : h("p", { class:"sub", style:"margin-top:16px" }, "This order is " + STATUS[ord.status].label.toLowerCase() + ", so it's locked. Use \"Change status\" below if you really need to edit it."),
      h("details", { style:"margin-top:20px" }, h("summary", { class:"sub", style:"cursor:pointer" }, "Change status manually"),
-       h("div", { style:"display:flex;gap:8px;margin-top:10px;max-width:340px" }, manual, manualBtn)));
+       h("div", { style:"display:flex;gap:8px;margin-top:10px;max-width:340px" }, manual, manualBtn)),
+     delZone);
    const body = h("div", { class:"order-layout" }, mainCol, side);
 
    dlgShow(dlg, "Order " + ord.ref, body, foot);

@@ -731,6 +731,8 @@ details.faq-item p{padding:0 40px 20px 0;color:var(--ink-2);max-width:62ch}
 
 .seg{display:grid;grid-template-columns:1fr 1fr;padding:4px;background:var(--tint);border-radius:var(--r)}
 
+.seg[hidden]{display:none}
+
 .seg-btn{min-height:42px;border:0;border-radius:3px;background:transparent;color:var(--ink-2);font-weight:600;cursor:pointer;transition:background .15s,color .15s}
 
 .seg-btn:hover{color:var(--ink)}
@@ -746,6 +748,8 @@ details.faq-item p{padding:0 40px 20px 0;color:var(--ink-2);max-width:62ch}
 .pw-toggle:hover{background:var(--tint)}
 
 .form-note{margin-top:16px}
+
+.forgot-link{margin:-6px 0 18px;text-align:right;font-size:.875rem}
 
 .aside{font-size:.9375rem;color:var(--ink-2)}
 

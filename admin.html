@@ -162,6 +162,7 @@
  .pw input{ padding-right:78px; }
  .pw-toggle{ position:absolute; right:6px; top:50%; transform:translateY(-50%); min-height:34px; padding:0 12px; background:none; border:0; border-radius:var(--r); color:var(--brand); font:600 .875rem var(--sans); cursor:pointer; }
  .pw-toggle:hover{ background:var(--tint); }
+ .forgot-link{ margin:-6px 0 18px; text-align:right; font-size:.875rem; }
 
  /* products and settings */
  .pgroup{ margin:32px 0 10px; font:600 1.25rem var(--serif); padding-bottom:10px; border-bottom:1px solid var(--ink); }
@@ -342,7 +343,7 @@
      pwIn.focus();
    });
    const pwWrap = h("div", { class:"pw" }, pwIn, pwToggle);
-   const form = h("form", { novalidate:true }, fieldE("Email", emailIn, "email"), fieldE("Password", pwIn, "password", pwWrap), err, btn);
+   const form = h("form", { novalidate:true }, fieldE("Email", emailIn, "email"), fieldE("Password", pwIn, "password", pwWrap), h("p", { class:"forgot-link" }, h("a", { href:"account.html#forgot", id:"adminForgot" }, "Forgot your password?")), err, btn);
    let working = false;
    form.addEventListener("submit", async ev => {
      ev.preventDefault();

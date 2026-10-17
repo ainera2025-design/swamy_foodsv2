@@ -147,6 +147,22 @@
    }
  }
 
+ // A password-reset link that has just been opened. Supabase reset links arrive in two shapes:
+ //   #access_token=...&refresh_token=...&type=recovery     (the standard email)
+ //   ?token_hash=...&type=recovery                          (the improved email template described in SETUP.md)
+ // or  #error=access_denied&error_code=otp_expired...      (a link that is old or was already used)
+ function parseRecoveryUrl() {
+   const h = new URLSearchParams(String(global.location.hash || "").replace(/^#/, ""));
+   const q = new URLSearchParams(String(global.location.search || ""));
+   if (h.get("error") || h.get("error_code")) return { error: h.get("error_code") || h.get("error") };
+   if (h.get("type") === "recovery" && h.get("access_token") && h.get("refresh_token")) {
+     return { access_token: h.get("access_token"), refresh_token: h.get("refresh_token"),
+              expires_in: Number(h.get("expires_in")) || 3600, expires_at: Number(h.get("expires_at")) || 0 };
+   }
+   if (q.get("type") === "recovery" && q.get("token_hash")) return { token_hash: q.get("token_hash") };
+   return null;
+ }
+
  const auth = {
    async signUp(email, password, fullName) {
      if (!configured) throw new SBError("The shop isn't connected to its database yet.", 0, "not_configured");
@@ -168,6 +184,36 @@
      const t = session && session.access_token;
      writeSession(null);
      if (t) { try { await request("/auth/v1/logout", { method: "POST", token: t, timeout: 6000 }); } catch (e) { /* already signed out locally */ } }
+   },
+   // Asks Supabase to email a reset link. It answers the same whether or not the address has an account.
+   async requestReset(email, redirectTo) {
+     if (!configured) throw new SBError("The shop isn't connected to its database yet.", 0, "not_configured");
+     await request("/auth/v1/recover?redirect_to=" + encodeURIComponent(redirectTo), { method: "POST", body: { email } });
+   },
+   // Reads a reset link from the address bar (and removes it from there straight away, so the secret
+   // never stays in the browser history). Returns null (no link), { error } (old or used link),
+   // or the tokens needed to choose a new password.
+   async recoveryFromUrl() {
+     const found = parseRecoveryUrl();
+     if (!found) return null;
+     try { global.history.replaceState(null, "", global.location.pathname); } catch (e) { /* ignore */ }
+     if (found.error) return { error: found.error };
+     if (found.token_hash) {
+       try {
+         const d = await request("/auth/v1/verify", { method: "POST", body: { type: "recovery", token_hash: found.token_hash } });
+         return { access_token: d.access_token, refresh_token: d.refresh_token, expires_in: d.expires_in, expires_at: d.expires_at };
+       } catch (e) {
+         if (e.code === "network") throw e;
+         return { error: "otp_expired" };
+       }
+     }
+     return found;
+   },
+   // Saves the new password using the reset link's own short-lived token, then logs the person in.
+   async setNewPassword(link, password) {
+     const u = await request("/auth/v1/user", { method: "PUT", token: link.access_token, body: { password } });
+     writeSession(toSession({ access_token: link.access_token, refresh_token: link.refresh_token, expires_in: link.expires_in, expires_at: link.expires_at, user: u }));
+     return session;
    },
    getSession: () => session,
    getUser: () => (session ? session.user : null),
@@ -906,9 +952,11 @@
  }
 
  /* ------------------------------ ACCOUNT (account.html) ------------------------------ */
+ const FLASH_KEY = "swamyfoods.flash.v1";            // one message to show on the next account page, then forget
+ const takeFlash = () => { try { const m = sessionStorage.getItem(FLASH_KEY); sessionStorage.removeItem(FLASH_KEY); return m || ""; } catch (e) { return ""; } };
  // A password box with a Show / Hide button (so people can check what they typed, especially on a phone).
  function pwField(label, id, opts) {
-   const f = field(label, "password", Object.assign({ id, type: "password", max: 72 }, opts));
+   const f = field(label, (opts && opts.name) || "password", Object.assign({ id, type: "password", max: 72 }, opts));
    const input = f.querySelector("input");
    const wrap = h("div", { class: "pw" });
    input.parentNode.insertBefore(wrap, input);
@@ -932,6 +980,7 @@
      signup ? field("Your name", "name", { id: "signup-name", ac: "name", max: 100, optional: true }) : null,
      field("Email", "email", { id: kind + "-email", type: "email", ac: signup ? "email" : "username", max: 254 }),
      pwField("Password", kind + "-password", { ac: signup ? "new-password" : "current-password", hint: signup ? "At least 8 characters." : null }),
+     signup ? null : h("p", { class: "forgot-link" }, h("a", { href: "#forgot" }, "Forgot your password?")),
      err, ok, submit,
      signup
        ? h("p", { class: "small muted form-note" }, "By creating an account you agree to our ", h("a", { href: "terms.html" }, "terms"), " and ", h("a", { href: "privacy.html" }, "privacy policy"), ".")
@@ -1017,30 +1066,132 @@
          o.invoice_no ? h("p", { class: "small" }, "Invoice number: " + o.invoice_no) : null,
          h("p", { class: "small" }, h("a", { href: "track.html?ref=" + encodeURIComponent(o.ref) }, "Track this order")))));
  }
+ // "Forgot your password?": asks for the email and sends a reset link. It says the same thing whether or not the
+ // address has an account, so it can't be used to find out who is a customer.
+ function forgotForm(prefill, onBack) {
+   const err = formAlert();
+   const submit = h("button", { class: "btn btn-block", type: "submit" }, "Send reset link");
+   const form = h("form", { novalidate: true, "aria-label": "Reset your password" },
+     field("Email", "email", { id: "forgot-email", type: "email", ac: "username", max: 254, value: prefill || "" }),
+     err, submit,
+     h("p", { class: "small form-note" }, h("a", { href: "#login", onclick: ev => { ev.preventDefault(); onBack(); } }, "← Back to log in")),
+     h("p", { class: "small muted form-note" }, "Can't get in? Call ", h("a", { href: "tel:" + CONTACT.tel }, CONTACT.phone), " and we'll help."));
+   const wrap = h("div", null, form);
+   const redirectTo = new URL("account.html", location.href).href;
+   let sending = false, timer = null;
+   function showSent(email) {
+     const again = h("button", { class: "btn btn-secondary", type: "button", disabled: true }, "Send it again");
+     const hint = h("p", { class: "small muted", style: "margin-top:10px", role: "status" });
+     let left = 60;
+     const tick = () => {
+       if (!again.isConnected) { clearInterval(timer); return; }
+       if (left > 0) { hint.textContent = "You can ask for another in " + left + " seconds."; left -= 1; }
+       else { clearInterval(timer); again.disabled = false; hint.textContent = ""; }
+     };
+     again.addEventListener("click", () => { clearInterval(timer); wrap.replaceChildren(form); const i = form.querySelector("input"); i.value = email; i.focus(); });
+     wrap.replaceChildren(
+       alertBox("success", "Check your email", "If there's an account for " + email + ", we've sent a link to choose a new password. It can take a minute or two, so look in your spam folder too. The link works once and expires in about an hour."),
+       h("div", { style: "display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:18px" }, again, h("a", { href: "#login", onclick: ev => { ev.preventDefault(); onBack(); } }, "← Back to log in")),
+       hint);
+     clearInterval(timer); timer = setInterval(tick, 1000); tick();
+   }
+   form.addEventListener("submit", async ev => {
+     ev.preventDefault();
+     if (sending) return;
+     const email = String(new FormData(form).get("email") || "").trim();
+     if (!EMAIL_RE.test(email)) return applyErrors(form, [["email", "Please enter a valid email address."]], err);
+     applyErrors(form, [], err);
+     sending = true; busy(submit, true, "Sending…");
+     try {
+       await SB.auth.requestReset(email, redirectTo);
+       sending = false; busy(submit, false, "", "Send reset link"); showSent(email);
+     } catch (e) {
+       sending = false; busy(submit, false, "", "Send reset link");
+       if (e.status === 429 || /seconds|rate limit|too many/i.test(e.message || "")) showFormAlert(err, "Please wait a moment", "We've just sent a link. You can ask for another in about a minute. Check your spam folder for the first one.");
+       else if (e.code === "network") showFormAlert(err, "We couldn't reach the server", e.message);
+       else showFormAlert(err, "We couldn't send the email right now", h("span", null, "Please try again in a little while, or call ", h("a", { href: "tel:" + CONTACT.tel }, CONTACT.phone), " and we'll reset it for you."));
+     }
+   });
+   return wrap;
+ }
+ // The page a reset link opens: choose a new password (twice), save it, and be logged in.
+ function resetForm(rec, onDone, onExpired) {
+   const err = formAlert();
+   const submit = h("button", { class: "btn btn-block", type: "submit" }, "Save new password");
+   const form = h("form", { novalidate: true, "aria-label": "Choose a new password" },
+     pwField("New password", "reset-password", { ac: "new-password", hint: "At least 8 characters." }),
+     pwField("Confirm new password", "reset-confirm", { name: "confirm", ac: "new-password" }),
+     err, submit);
+   let working = false;
+   form.addEventListener("submit", async ev => {
+     ev.preventDefault();
+     if (working) return;
+     const fd = new FormData(form), pw = String(fd.get("password") || ""), pw2 = String(fd.get("confirm") || "");
+     const errs = [];
+     if (pw.length < 8) errs.push(["password", "Please choose a password with at least 8 characters."]);
+     else if (pw2 !== pw) errs.push(["confirm", "The two passwords don't match."]);
+     if (errs.length) return applyErrors(form, errs, err);
+     applyErrors(form, [], err);
+     working = true; busy(submit, true, "Saving…");
+     try {
+       await SB.auth.setNewPassword(rec, pw);
+       try { sessionStorage.setItem(FLASH_KEY, "Your password has been changed. You're now logged in."); } catch (e) {}
+       onDone();
+     } catch (e) {
+       working = false; busy(submit, false, "", "Save new password");
+       const msg = String(e.message || "");
+       if (e.code === "same_password" || /different from the old/i.test(msg)) applyErrors(form, [["password", "Please choose a password you haven't used before. It must be different from your old one."]], err);
+       else if (e.status === 401 || e.status === 403 || /expired|invalid jwt|bad_jwt/i.test(msg + " " + e.code)) onExpired();
+       else if (e.status === 422) showFormAlert(err, "That password won't work", msg);
+       else showFormAlert(err, "We couldn't save your new password", msg);
+     }
+   });
+   return form;
+ }
+
  async function pageAccount() {
    const root = pageRoot("accountRoot");
    const intro = $("#accountIntro"), title = $("h1");
    const q = new URLSearchParams(location.search);
    const next = safeNext(q.get("next"));
    const say = (h1, p) => { if (title) title.textContent = h1; if (intro) intro.textContent = p; };
-   let setMode = null;                  // lets the address (#login / #signup) switch the form on the page
+   let setMode = null;                  // lets the address (#login / #signup / #forgot) switch the form on the page
+   let resetting = false;               // true while the "choose a new password" page is showing
 
-   /* ---- logged out: one form at a time, notes beside it ---- */
-   const drawLoggedOut = () => {
+   /* ---- logged out: one form at a time (log in, create account, or reset password), notes beside it ---- */
+   const drawLoggedOut = opts => {
+     opts = opts || {};
      say("Your account", "Log in to see your orders and use your saved delivery details. An account is optional. You can always check out as a guest.");
      const slot = h("div", { class: "seg-panel", role: "tabpanel" });
      const tabBtn = (mode, label) => h("button", { class: "seg-btn", type: "button", role: "tab", id: "tab-" + mode, "data-mode": mode }, label);
      const tabs = h("div", { class: "seg", role: "tablist", "aria-label": "Log in or create an account" }, tabBtn("login", "Log in"), tabBtn("signup", "Create account"));
-     let mode = q.get("mode") === "signup" || location.hash === "#signup" ? "signup" : "login";
+     const MODES = ["login", "signup", "forgot"];
+     let mode = MODES.includes(opts.mode) ? opts.mode : location.hash === "#forgot" ? "forgot" : (q.get("mode") === "signup" || location.hash === "#signup" ? "signup" : "login");
+     let pendingNote = opts.notice || null;           // shown once, above the first form
+     const titles = {
+       login:  ["Welcome back", "Log in to see your orders and save time at checkout."],
+       signup: ["Create your account", "It takes a few seconds and makes ordering quicker next time."],
+       forgot: ["Reset your password", "Enter the email you signed up with and we'll send you a link to choose a new password."]
+     };
      const show = (m, focus) => {
        const old = slot.querySelector('input[type="email"]'), typed = old ? old.value : "";
        mode = m;
-       tabs.querySelectorAll(".seg-btn").forEach(b => { const on = b.dataset.mode === m; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; });
-       slot.setAttribute("aria-labelledby", "tab-" + m);
-       slot.replaceChildren(h("h2", { class: "panel-title" }, m === "login" ? "Welcome back" : "Create your account"),
-         h("p", { class: "panel-sub" }, m === "login" ? "Log in to see your orders and save time at checkout." : "It takes a few seconds and makes ordering quicker next time."),
-         authForm(m, next));
-       const em = slot.querySelector('input[type="email"]'); if (em && typed) em.value = typed;
+       tabs.querySelectorAll(".seg-btn").forEach(b => {
+         const on = b.dataset.mode === m;
+         b.setAttribute("aria-selected", String(on));
+         b.tabIndex = on || (m === "forgot" && b.dataset.mode === "login") ? 0 : -1;     // while resetting, the tabs stay reachable by keyboard
+       });
+       tabs.hidden = m === "forgot";                  // no tabs while resetting: the page has its own "Back to log in" link
+       if (m === "forgot") { slot.removeAttribute("aria-labelledby"); slot.setAttribute("aria-label", "Reset your password"); }
+       else { slot.removeAttribute("aria-label"); slot.setAttribute("aria-labelledby", "tab-" + m); }
+       const note = pendingNote; pendingNote = null;
+       slot.replaceChildren(...[
+         h("h2", { class: "panel-title" }, titles[m][0]),
+         h("p", { class: "panel-sub" }, titles[m][1]),
+         note,
+         m === "forgot" ? forgotForm(typed, () => show("login", true)) : authForm(m, next)
+       ].filter(Boolean));
+       const em = slot.querySelector('input[type="email"]'); if (em && typed && !em.value) em.value = typed;
        try { history.replaceState(null, "", location.pathname + location.search + "#" + m); } catch (e) {}
        if (focus) { const f = slot.querySelector("input"); if (f) f.focus(); }
      };
@@ -1051,7 +1202,7 @@
        if (to) { e.preventDefault(); show(to); $("#tab-" + to).focus(); }
      });
      show(mode, false);
-     setMode = m => show(m, false);
+     setMode = m => show(m, m === "forgot");
      root.replaceChildren(h("div", { class: "split acct-split" },
        h("div", { class: "panel" }, tabs, slot),
        h("aside", { class: "aside", "aria-label": "About accounts" },
@@ -1061,7 +1212,30 @@
          h("p", null, "No problem. ", h("a", { href: "index.html#products" }, "Shop as a guest"), " and add your details at checkout."),
          h("h3", null, "Already ordered as a guest?"),
          h("p", null, h("a", { href: "track.html" }, "Track your order"), " with its reference and email. No account needed."))));
-     if (q.get("mode") === "signup") { const f = slot.querySelector("input"); if (f) f.focus(); }   // arriving from a "create account" link: cursor in the first field
+     if (q.get("mode") === "signup" || mode === "forgot") { const f = slot.querySelector("input"); if (f) f.focus(); }   // arriving from a link: cursor in the first field
+   };
+
+   /* ---- the page a password-reset link opens ---- */
+   const drawReset = rec => {
+     resetting = true;
+     say("Choose a new password", "Pick something you'll remember. You'll be logged in as soon as it's saved.");
+     const li = t => h("li", null, t);
+     root.replaceChildren(h("div", { class: "split acct-split" },
+       h("div", { class: "panel" },
+         h("h2", { class: "panel-title", style: "margin-top:4px" }, "Choose a new password"),
+         h("p", { class: "panel-sub" }, "Enter it twice so we know it's right."),
+         resetForm(rec, resetDone, expiredView)),
+       h("aside", { class: "aside", "aria-label": "Choosing a password" },
+         h("h2", null, "A good password"),
+         h("ul", { class: "ticks" }, li("At least 8 characters"), li("Not one you use on other websites"), li("A few unrelated words is easy to remember and hard to guess")),
+         h("h3", null, "Remembered it after all?"),
+         h("p", null, h("a", { href: "account.html" }, "Back to log in")))));
+     const f = root.querySelector("input"); if (f) f.focus();
+   };
+   const resetDone = () => { resetting = false; try { history.replaceState(null, "", location.pathname + "#orders"); } catch (e) {} drawLoggedIn(SB.auth.getUser()); };
+   const expiredView = () => {
+     resetting = false;
+     drawLoggedOut({ mode: "forgot", notice: alertBox("error", "That reset link didn't work", "It may have expired or already been used. Enter your email and we'll send you a new one.") });
    };
 
    /* ---- logged in: orders and delivery details ---- */
@@ -1070,7 +1244,9 @@
      const first = String(user.name || "").trim().split(/\s+/)[0];
      say("Your account", first ? "Welcome back, " + first + "." : "Manage your orders and delivery details.");
      const body = h("div", { class: "acct-body" }, loadingRow(tab === "orders" ? "Loading your orders…" : "Loading your details…"));
+     const flash = takeFlash();
      root.replaceChildren(h("div", { class: "acct" },
+       flash ? alertBox("success", "", flash) : null,
        h("div", { class: "acct-head" },
          h("p", { class: "muted" }, "Signed in as ", h("strong", { style: "color:var(--ink)" }, user.email)),
          h("button", { class: "btn btn-secondary btn-sm", type: "button", id: "logoutBtn", onclick: async () => { await SB.auth.signOut(); location.assign("index.html"); } }, "Log out")),
@@ -1092,13 +1268,18 @@
    };
 
    const draw = () => { const u = SB.auth.getUser(); return u ? drawLoggedIn(u) : drawLoggedOut(); };
-   await draw();
+   let rec = null;
+   try { rec = await SB.auth.recoveryFromUrl(); } catch (e) { rec = { error: "network" }; }      // a password-reset link just opened?
+   if (rec && rec.error) expiredView();
+   else if (rec) drawReset(rec);
+   else await draw();
    global.addEventListener("hashchange", () => {
+     if (resetting) return;
      const u = SB.auth.getUser();
      if (u) drawLoggedIn(u);
-     else if (setMode && (location.hash === "#login" || location.hash === "#signup")) setMode(location.hash.slice(1));
+     else if (setMode && ["#login", "#signup", "#forgot"].includes(location.hash)) setMode(location.hash.slice(1));
    });
-   SB.auth.onChange(sess => { if (!sess) drawLoggedOut(); });
+   SB.auth.onChange(sess => { if (!sess && !resetting) drawLoggedOut(); });
  }
 
  /* ------------------------------ TRACK (track.html) ------------------------------ */
